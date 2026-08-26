@@ -2,6 +2,11 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## 0.3.11 — 2026-08-26
+
+### Fixed
+- **Compatibility with dsh-better-sidebar ≥ 0.16**: the terminal / SFTP center panel is full-screen centered again. 0.16.x adds `contain: layout` to the sidebar panel containers (plus the unified panel host / free windows); per CSS Containment such a container becomes the **containing block for descendant `position:fixed` elements**, which trapped the previously inline-rendered viewport overlay inside the narrow right rail. The overlay now mounts through a React portal into `document.body` and no longer depends on ancestor positioning assumptions (context menu and dialogs travel with it); falls back to the legacy inline render if react-dom is unavailable.
+
 ## 0.3.10 — 2026-08-18
 
 ### Fixed
