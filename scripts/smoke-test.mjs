@@ -17,16 +17,42 @@ import {
   formatHostFingerprint,
   isUsableHostFingerprint,
 } from '../lib/shared/host-key.js'
+import {
+  clampTimeoutMs,
+  defaultTimeoutMsForAction,
+  findReusableLive,
+  pickOldestTombstone,
+  withTimeout,
+  SSH_TIMEOUT_MIN_MS,
+  SSH_TIMEOUT_MAX_MS,
+  SSH_EXEC_DEFAULT_TIMEOUT_MS,
+  SSH_SFTP_TRANSFER_TIMEOUT_MS,
+  disconnectedSessionError,
+} from '../lib/shared/session-policy.js'
 
 let failed = 0
+const pending = []
 function test(name, fn) {
-  try {
-    fn()
-    console.log('ok  ', name)
-  } catch (e) {
-    failed++
-    console.error('FAIL', name, e && e.message ? e.message : e)
+  const run = () => {
+    try {
+      const result = fn()
+      if (result && typeof result.then === 'function') {
+        return result.then(
+          () => console.log('ok  ', name),
+          (e) => {
+            failed++
+            console.error('FAIL', name, e && e.message ? e.message : e)
+          },
+        )
+      }
+      console.log('ok  ', name)
+    } catch (e) {
+      failed++
+      console.error('FAIL', name, e && e.message ? e.message : e)
+    }
   }
+  const out = run()
+  if (out && typeof out.then === 'function') pending.push(out)
 }
 
 test('normalizeProjectKey strips trailing slash', () => {
@@ -110,6 +136,49 @@ test('host key fingerprint is stable sha256 hex (no UTF-8 collision)', () => {
   assert.equal(isUsableHostFingerprint('\u0000ssh-ed25519'), false)
 })
 
+test('clampTimeoutMs bounds and fallback', () => {
+  assert.equal(clampTimeoutMs(undefined, 30_000), 30_000)
+  assert.equal(clampTimeoutMs(0, 30_000), 30_000)
+  assert.equal(clampTimeoutMs(500, 30_000), SSH_TIMEOUT_MIN_MS)
+  assert.equal(clampTimeoutMs(999_999, 30_000), SSH_TIMEOUT_MAX_MS)
+})
+
+test('defaultTimeoutMsForAction', () => {
+  assert.equal(defaultTimeoutMsForAction('exec'), SSH_EXEC_DEFAULT_TIMEOUT_MS)
+  assert.equal(defaultTimeoutMsForAction('sftp_upload'), SSH_SFTP_TRANSFER_TIMEOUT_MS)
+  assert.equal(defaultTimeoutMsForAction('sftp_list'), 30_000)
+})
+
+test('reuse live vs tombstone pick', () => {
+  const key = '/workspace'
+  const sessions = [
+    { id: 'dead', hostId: 'h1', projectPathKey: key, status: 'disconnected', running: false, sftpEnabled: true, createdAt: 1 },
+    { id: 'live', hostId: 'h1', projectPathKey: key, status: 'connected', running: true, sftpEnabled: true, createdAt: 2 },
+  ]
+  assert.equal(findReusableLive(sessions, { projectPathKey: key, hostId: 'h1', needsSftp: true }).id, 'live')
+  assert.equal(pickOldestTombstone(sessions, { projectPathKey: key, hostId: 'h1', needsSftp: true }).id, 'dead')
+  assert.equal(
+    findReusableLive(
+      sessions.filter((s) => s.id === 'dead'),
+      { projectPathKey: key, hostId: 'h1', needsSftp: true },
+    ),
+    undefined,
+  )
+})
+
+test('withTimeout rejects and calls onTimeout', async () => {
+  let hit = false
+  await assert.rejects(
+    () => withTimeout(new Promise(() => {}), 1000, { onTimeout: () => { hit = true } }),
+    (e) => e.timedOut === true && hit === true,
+  )
+})
+
+test('disconnectedSessionError is stable English for the model', () => {
+  assert.match(disconnectedSessionError(), /disconnected/i)
+})
+
+await Promise.all(pending)
 if (failed) {
   console.error(`\n${failed} failed`)
   process.exit(1)
