@@ -84,7 +84,7 @@ Under `$DSH_HOME/ssh-tunnel/` (mode `0700`):
 
 1. **Hosts** — CRUD, OpenSSH scan import  
 2. **Project access** — which hosts the current project may use (**grant before connect**; Connect does not auto-authorize)  
-3. **Sessions** — Connect / disconnect; open **Terminal** or **SFTP**
+3. **Sessions** — Connect / disconnect; open **Terminal** or **SFTP**. Dropped sessions stay as tombstones with **Reconnect** (same id) or **Close**. Unexpected drops auto-reconnect up to 3 times. ssh2 keepalive is 30s × 3.
 
 ## Model tool
 
@@ -94,8 +94,9 @@ SSHManager action=exec host_id=<id> command="uname -a"
 SSHManager action=sftp_list host_id=<id> path=/
 ```
 
-Session strategies: `reuse_or_create` (default), `new`, `require_existing`, or explicit `session_id`.  
-`keyboardInteractive` hosts are never auto-dialed by the tool; connect in the UI first.
+Session strategies: `reuse_or_create` (default; revives a disconnected session for that host), `new`, `require_existing`, or explicit `session_id`.  
+`timeout_ms` (1000–300000) applies to exec / SFTP / shell. Defaults: exec and SFTP metadata 30s, SFTP transfer 120s.  
+`keyboardInteractive` hosts are never auto-dialed by the tool; connect in the UI first. They cannot reconnect in place.
 
 ## Security
 

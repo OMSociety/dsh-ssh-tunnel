@@ -84,7 +84,7 @@ dsh plugin --profile web add "dsh-ssh-tunnel@link:/path/to/dsh-ssh-tunnel"
 
 1. **主机库** — 增删改、OpenSSH 配置扫描导入  
 2. **项目授权** — 当前项目允许使用的主机（**连接前须先授权**；Connect 不会自动写入授权）  
-3. **隧道会话** — 连接 / 断开；打开 **终端** 或 **SFTP**  
+3. **隧道会话** — 连接 / 断开；打开 **终端** 或 **SFTP**。断开后保留墓碑，可 **重连**（同一 id）或 **关闭**。意外断开自动重连最多 3 次。ssh2 keepalive 为 30s × 3。  
 
 ## 模型工具
 
@@ -94,8 +94,9 @@ SSHManager action=exec host_id=<id> command="uname -a"
 SSHManager action=sftp_list host_id=<id> path=/
 ```
 
-会话策略：`reuse_or_create`（默认）、`new`、`require_existing`，或显式 `session_id`。  
-`keyboardInteractive` 主机 **不会** 被工具自动拨号，需先在 UI 连接。
+会话策略：`reuse_or_create`（默认；会复活同主机已断开会话）、`new`、`require_existing`，或显式 `session_id`。  
+`timeout_ms`（1000–300000）适用于 exec / SFTP / shell。默认：exec 与 SFTP 元数据 30s，SFTP 传输 120s。  
+`keyboardInteractive` 主机 **不会** 被工具自动拨号，需先在 UI 连接；也不能原地重连。
 
 ## 安全
 

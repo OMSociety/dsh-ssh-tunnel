@@ -2,6 +2,18 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## 0.4.0 — 2026-09-01
+
+### Added
+- Disconnected sessions stay as **tombstones** (Reconnect + Close). No TTL. Unexpected drops auto-reconnect up to 3 times on the same `session_id`.
+- ssh2 **keepalive** 30s × 3 misses so half-open TCP becomes a real disconnect instead of a false-alive row.
+- `SSHManager` `timeout_ms` (1s–300s) for exec, SFTP, and shell. Defaults: exec/SFTP metadata 30s, SFTP transfer 120s. Host ceiling 300s. Stop/`exec.signal` aborts in-flight work and destroys the channel.
+
+### Changed
+- `reuse_or_create` **revives** the oldest disconnected session for that host instead of opening a parallel live row. Reconnect failure leaves the tombstone and fails the tool call.
+- Explicit `session_id` that is disconnected fails immediately (no ssh2 hang). Reconnecting ids wait for live.
+- keyboard-interactive hosts cannot reconnect in place; close and Connect from the UI.
+
 ## 0.3.11 — 2026-08-26
 
 ### Fixed

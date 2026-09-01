@@ -2,6 +2,18 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## 0.4.0 — 2026-09-01
+
+### 新增
+- 会话断开后保留**墓碑**（重连 + 关闭），无 TTL。意外断开自动重连最多 3 次，同一 `session_id`。
+- ssh2 **keepalive** 30s × 3，半开连接会变成真正断开，而不再假活。
+- `SSHManager` 支持 `timeout_ms`（1s–300s），覆盖 exec / SFTP / shell。默认：exec 与 SFTP 元数据 30s，SFTP 传输 120s；整次调用天花板 300s。Stop / `exec.signal` 会中止并关掉 channel。
+
+### 变更
+- `reuse_or_create` **复活**同主机最老墓碑，不再另开一条活会话。重连失败则保持断线并让这次工具失败。
+- 显式已断开的 `session_id` 立即失败（不再卡在 ssh2 上）。重连中的 id 会等到活过来。
+- 键盘交互主机不能原地重连，需关闭后在 UI 重新 Connect。
+
 ## 0.3.11 — 2026-08-26
 
 ### 修复
