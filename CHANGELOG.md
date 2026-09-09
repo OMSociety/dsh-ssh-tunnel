@@ -2,6 +2,15 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## 0.4.3 — 2026-09-08
+
+### Security
+- **Result gate for in-flight operations.** If a host's project grant is revoked while an `SSHManager` operation (exec / read_session / sftp_list / sftp_stat / sftp_read_text / sftp_download) is running, the result is re-validated right before delivery: output from the revoked host is discarded and the call fails with `not authorized`.
+- **`sftp_download` never leaves data behind after a revocation.** If the grant is revoked during or after a pull, the locally written file is removed (even a partially written one on a mid-transfer failure) and the result is refused.
+
+### Fixed
+- **Terminal panel no longer silently polls a dead session.** When a session is closed or its host grant revoked while the terminal is open, the client stops polling and shows `Session disconnected` instead of hammering the server every 120ms with no feedback.
+
 ## 0.4.2 — 2026-09-08
 
 ### Security
