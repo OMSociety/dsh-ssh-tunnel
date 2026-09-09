@@ -2,6 +2,11 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## 0.4.2 — 2026-09-08
+
+### Security
+- **Revoking a host's project grant now takes effect on established tunnel sessions.** Previously only new connections and the `SSHManager` tool re-checked grants; shell / SFTP operations over an already-open session and reconnection (including auto-reconnect) kept working after the grant was revoked. Now every session use re-validates the host against the session's project grants (`requireLiveSession`), reconnect / auto-reconnect refuse to resurrect a revoked host, and `setGrants` / host deletion actively close the affected live sessions.
+
 ## 0.4.1 — 2026-09-08
 
 ### Fixed
