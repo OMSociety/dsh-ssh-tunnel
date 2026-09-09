@@ -2,6 +2,11 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## 0.4.5 — 2026-09-09
+
+### 移除
+- **不再提供键盘交互登录。** 只能在堡垒机网页/客户端里用的主机无法绑定到本插件。侧栏认证方式只保留密码与私钥。已保存的 `keyboardInteractive` 主机记录仍留在磁盘，但连接、存成 KBI、重连和 `SSHManager` 都会失败，并提示改为密码或私钥（`credential=unsupported`）。
+
 ## 0.4.4 — 2026-09-09
 
 ### 安全

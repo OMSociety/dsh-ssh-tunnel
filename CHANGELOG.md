@@ -2,6 +2,11 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## 0.4.5 — 2026-09-09
+
+### Removed
+- **Keyboard-interactive auth is no longer offered.** Bastion/MFA hosts that only work inside a vendor web/client cannot be bound here. The sidebar auth dropdown is password or private key only. Existing `keyboardInteractive` host records are kept on disk but Connect, save-as-KBI, reconnect, and `SSHManager` all fail with a message to switch the host to password or private key (`credential=unsupported`).
+
 ## 0.4.4 — 2026-09-09
 
 ### Security

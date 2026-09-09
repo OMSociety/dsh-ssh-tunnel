@@ -33,6 +33,7 @@ import {
   SSH_STATUS_CONNECTED,
   SSH_STATUS_DISCONNECTED,
   disconnectedSessionError,
+  kbiUnsupportedError,
 } from '../lib/shared/session-policy.js'
 import { createSessionRegistry } from '../lib/session.js'
 import { isLoopbackHostname, isTrustedRequest } from '../lib/shared/http-trust.js'
@@ -173,10 +174,11 @@ test('credential + publicHost never leak secrets', () => {
   assert.equal(model.credentialStatus, 'saved')
 })
 
-test('interactive credential status', () => {
+test('retired keyboard-interactive is unsupported, not a usable credential', () => {
   const host = { id: 'h2', authType: 'keyboardInteractive', host: 'x', username: 'u' }
   const pub = publicHost(host, { byHostId: {} })
-  assert.equal(pub.credentialStatus, 'interactive')
+  assert.equal(pub.credentialStatus, 'unsupported')
+  assert.equal(pub.credentialConfigured, false)
 })
 
 test('chunkFromBuffer incremental', () => {
@@ -251,6 +253,11 @@ test('withTimeout rejects and calls onTimeout', async () => {
 
 test('disconnectedSessionError is stable English for the model', () => {
   assert.match(disconnectedSessionError(), /disconnected/i)
+})
+
+test('kbiUnsupportedError tells the model to switch auth', () => {
+  assert.match(kbiUnsupportedError(), /not supported/i)
+  assert.match(kbiUnsupportedError(), /password or private key/i)
 })
 
 /* ------------------------------------------------------------------ *

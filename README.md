@@ -96,7 +96,7 @@ SSHManager action=sftp_list host_id=<id> path=/
 
 Session strategies: `reuse_or_create` (default; revives a disconnected session for that host), `new`, `require_existing`, or explicit `session_id`.  
 `timeout_ms` (1000–300000) applies to exec / SFTP / shell. Defaults: exec and SFTP metadata 30s, SFTP transfer 120s.  
-`keyboardInteractive` hosts are never auto-dialed by the tool; connect in the UI first. They cannot reconnect in place.
+Auth is **password** or **private key** only. Keyboard-interactive / bastion-web MFA is not supported.
 
 ## Security
 
@@ -105,7 +105,7 @@ Session strategies: `reuse_or_create` (default; revives a disconnected session f
 - Host keys are stored as **SHA256 hex** in `known_hosts.json`; first connect / rotation prompts in the sidebar (fingerprint shown)  
 - HTTP API is loopback / trusted-hosts fenced; browser `Origin` must match; session APIs require `projectPathKey`  
 - Prefer key-based auth; rotate secrets if `secrets.json` may have leaked  
-- keyboard-interactive hosts cannot be dialed with empty answers (no MFA prompt UI in this version)  
+- keyboard-interactive is retired: edit those hosts to password or private key  
 
 ## Internationalization (UI)
 

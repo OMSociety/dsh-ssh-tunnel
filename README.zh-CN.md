@@ -96,7 +96,7 @@ SSHManager action=sftp_list host_id=<id> path=/
 
 会话策略：`reuse_or_create`（默认；会复活同主机已断开会话）、`new`、`require_existing`，或显式 `session_id`。  
 `timeout_ms`（1000–300000）适用于 exec / SFTP / shell。默认：exec 与 SFTP 元数据 30s，SFTP 传输 120s。  
-`keyboardInteractive` 主机 **不会** 被工具自动拨号，需先在 UI 连接；也不能原地重连。
+认证方式仅 **密码** 或 **私钥**。不支持键盘交互 / 堡垒机网页 MFA。
 
 ## 安全
 
@@ -105,7 +105,7 @@ SSHManager action=sftp_list host_id=<id> path=/
 - Host key 以 **SHA256 hex** 存入 `known_hosts.json`；首次或变更时在侧栏确认（展示指纹）  
 - HTTP API 限制 loopback / trusted hosts；浏览器 `Origin` 必须匹配；会话 API 必须带 `projectPathKey`  
 - 优先密钥登录；若 `secrets.json` 可能泄露请轮换凭据  
-- 键盘交互主机不能以空应答拨号（本版本尚无 MFA 提示 UI）  
+- 键盘交互已下线：请把此类主机改为密码或私钥  
 
 ## 界面国际化
 
