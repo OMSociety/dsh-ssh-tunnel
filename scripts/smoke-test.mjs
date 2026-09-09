@@ -27,8 +27,11 @@ import {
   SSH_TIMEOUT_MAX_MS,
   SSH_EXEC_DEFAULT_TIMEOUT_MS,
   SSH_SFTP_TRANSFER_TIMEOUT_MS,
+  SSH_STATUS_CONNECTED,
+  SSH_STATUS_DISCONNECTED,
   disconnectedSessionError,
 } from '../lib/shared/session-policy.js'
+import { createSessionRegistry } from '../lib/session.js'
 
 let failed = 0
 const pending = []
@@ -176,6 +179,91 @@ test('withTimeout rejects and calls onTimeout', async () => {
 
 test('disconnectedSessionError is stable English for the model', () => {
   assert.match(disconnectedSessionError(), /disconnected/i)
+})
+
+/* ------------------------------------------------------------------ *
+ * Security regression: revoking a host's project grant must make its  *
+ * established tunnel sessions unusable AND unreconnectable, and revoke *
+ * must terminate those sessions (DSH plugin upgrade audit 2026-09-08). *
+ * ------------------------------------------------------------------ */
+
+function makeRegistry({ isHostAuthorized = () => true } = {}) {
+  return createSessionRegistry({
+    connectClient: async () => {
+      throw new Error('connectClient must not be used in offline tests')
+    },
+    loadSecrets: () => ({ byHostId: {} }),
+    getPrompt: () => undefined,
+    getHostById: (id) => ({
+      id,
+      name: 'x',
+      host: '1.2.3.4',
+      port: 22,
+      username: 'root',
+      authType: 'password',
+    }),
+    isHostAuthorized,
+  })
+}
+
+function liveRec(id, hostId, projectPathKey) {
+  return {
+    id,
+    hostId,
+    projectPathKey,
+    status: SSH_STATUS_CONNECTED,
+    running: true,
+    client: {},
+    sftpEnabled: true,
+    closing: false,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    reconnectRunner: false,
+    reconnectAttempt: 0,
+    connectionGeneration: 1,
+    title: `t-${id}`,
+    endpoint: '',
+  }
+}
+
+test('revoked host: requireLiveSession refuses use of established session', () => {
+  const registry = makeRegistry({ isHostAuthorized: () => false })
+  const key = '/workspace/DSH-plugin'
+  registry.sessions.set('s1', liveRec('s1', 'h-sg', key))
+  // Shell / SFTP operations all go through requireLiveSession; a revoked host
+  // must not be usable even though the session object is still live.
+  assert.throws(() => registry.requireLiveSession('s1', key), /not authorized/)
+})
+
+test('granted host: requireLiveSession still allows use', () => {
+  const registry = makeRegistry({ isHostAuthorized: () => true })
+  const key = '/workspace/DSH-plugin'
+  registry.sessions.set('s1', liveRec('s1', 'h-sg', key))
+  assert.equal(registry.requireLiveSession('s1', key).id, 's1')
+})
+
+test('revoked host: reconnect refuses to resurrect the session', async () => {
+  const registry = makeRegistry({ isHostAuthorized: () => false })
+  const key = '/workspace/DSH-plugin'
+  const rec = liveRec('s1', 'h-sg', key)
+  rec.status = SSH_STATUS_DISCONNECTED
+  rec.running = false
+  registry.sessions.set('s1', rec)
+  await assert.rejects(() => registry.reconnectSession('s1', { manual: true }), /not authorized/)
+})
+
+test('closeSessionsForHost terminates only the revoked host sessions in the project', () => {
+  const registry = makeRegistry()
+  const keyA = '/workspace/DSH-plugin'
+  const keyB = '/workspace/other'
+  registry.sessions.set('a1', liveRec('a1', 'h-sg', keyA)) // revoked host, this project
+  registry.sessions.set('b1', liveRec('b1', 'h2', keyA)) // other host, same project
+  registry.sessions.set('c1', liveRec('c1', 'h-sg', keyB)) // same host, other project
+  const out = registry.closeSessionsForHost(keyA, 'h-sg')
+  assert.equal(out.closed, 1)
+  assert.equal(registry.sessions.has('a1'), false)
+  assert.equal(registry.sessions.has('b1'), true)
+  assert.equal(registry.sessions.has('c1'), true)
 })
 
 await Promise.all(pending)
