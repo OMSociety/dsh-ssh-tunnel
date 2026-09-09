@@ -2,6 +2,21 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## 0.4.4 — 2026-09-09
+
+### Security
+- **Local paths stay under `/workspace` after symlink resolution.** Upload/download/list/mkdir/delete/rename now reject lexical escapes *and* outbound symlinks (for example `ln -s $DSH_HOME /workspace/.escape`). Deleting a symlink unlinks the link only; it does not walk the target.
+- **HTTP session APIs require `projectPathKey`.** Omitting it no longer skips the project check on PTY/SFTP/`disconnect`. Cross-origin `Origin` headers are rejected; `0.0.0.0` is not treated as loopback.
+- **Corrupt `secrets.json` fails closed.** Parse errors no longer become an empty store that the next `saveHost` would write back. JSON files are written atomically (`tmp` + rename).
+- **Draft migration is idempotent.** A marker file plus host+port+username matching prevent duplicate hosts on every restart.
+- **Result gates cover writes and HTTP.** `sftp_write_text` / upload / mkdir / rename / delete / `send_input` and the matching sidebar APIs re-check grants before reporting success. A missing authorization predicate throws instead of no-op.
+- **keyboard-interactive empty answers are refused.** The sidebar will not dial KBI with no prompt UI; unexpected KBI drops tombstone immediately instead of a 25s reconnect loop.
+- **xterm is bundled-only.** The previous jsDelivr CSS/JS fallback is removed.
+
+### Fixed
+- Reconnect that wins a race against `close` now `end()`s the new client instead of attaching it to a deleted record.
+- `openSftp` and `ensureShell` honor the same timeout/abort contract as exec.
+
 ## 0.4.3 — 2026-09-08
 
 ### Security

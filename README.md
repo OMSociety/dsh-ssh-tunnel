@@ -101,10 +101,11 @@ Session strategies: `reuse_or_create` (default; revives a disconnected session f
 ## Security
 
 - Tool and list APIs must not return `password` / PEM / passphrase  
-- Local upload/download paths are constrained to the project root and `/workspace`  
+- Local upload/download/list/delete paths are constrained to `/workspace` (lexical **and** realpath; outbound symlinks rejected)  
 - Host keys are stored as **SHA256 hex** in `known_hosts.json`; first connect / rotation prompts in the sidebar (fingerprint shown)  
-- HTTP API is fenced like other DSH local plugins (loopback / trusted hosts)  
+- HTTP API is loopback / trusted-hosts fenced; browser `Origin` must match; session APIs require `projectPathKey`  
 - Prefer key-based auth; rotate secrets if `secrets.json` may have leaked  
+- keyboard-interactive hosts cannot be dialed with empty answers (no MFA prompt UI in this version)  
 
 ## Internationalization (UI)
 
@@ -124,7 +125,7 @@ npm run check
 
 ### xterm loading
 
-Prefers a bundled `@xterm/xterm` when available; otherwise falls back to jsDelivr CDN (needs network / CSP allowlist).
+Requires bundled `@xterm/xterm` from the DSH web profile. There is no CDN fallback.
 
 ## License
 

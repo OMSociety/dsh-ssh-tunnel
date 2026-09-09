@@ -101,10 +101,11 @@ SSHManager action=sftp_list host_id=<id> path=/
 ## 安全
 
 - 列表与工具结果不得包含 password / PEM / 口令  
-- 本地上传下载路径限制在项目根与 `/workspace`  
+- 本地上传/下载/列举/删除路径限制在 `/workspace`（词法 **与** realpath；拒绝指向工作区外的符号链接）  
 - Host key 以 **SHA256 hex** 存入 `known_hosts.json`；首次或变更时在侧栏确认（展示指纹）  
-- HTTP API 与其他 DSH 本地插件相同（loopback / trusted hosts）  
+- HTTP API 限制 loopback / trusted hosts；浏览器 `Origin` 必须匹配；会话 API 必须带 `projectPathKey`  
 - 优先密钥登录；若 `secrets.json` 可能泄露请轮换凭据  
+- 键盘交互主机不能以空应答拨号（本版本尚无 MFA 提示 UI）  
 
 ## 界面国际化
 
@@ -124,7 +125,7 @@ npm run check
 
 ### xterm 加载
 
-优先使用环境中的 `@xterm/xterm`；否则回退 jsDelivr CDN（需外网 / CSP 放行）。
+仅使用 DSH web profile 中打包的 `@xterm/xterm`，不再回退 CDN。
 
 ## 许可证
 
