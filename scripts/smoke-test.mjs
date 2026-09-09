@@ -4,6 +4,9 @@
  * Run: node scripts/smoke-test.mjs
  */
 import assert from 'node:assert/strict'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { existsSync, unlinkSync, writeFileSync } from 'node:fs'
 import { normalizeProjectKey, isPathInsideRoots, joinUnderRoot } from '../lib/shared/path.js'
 import {
   hostCredentialConfigured,
@@ -32,6 +35,10 @@ import {
   disconnectedSessionError,
 } from '../lib/shared/session-policy.js'
 import { createSessionRegistry } from '../lib/session.js'
+import {
+  assertSessionStillAuthorized,
+  discardRevokedLocalFile,
+} from '../lib/shared/session-auth.js'
 
 let failed = 0
 const pending = []
@@ -264,6 +271,65 @@ test('closeSessionsForHost terminates only the revoked host sessions in the proj
   assert.equal(registry.sessions.has('a1'), false)
   assert.equal(registry.sessions.has('b1'), true)
   assert.equal(registry.sessions.has('c1'), true)
+})
+
+/* ------------------------------------------------------------------ *
+ * Security regression (v0.4.3): a tool result must not be delivered   *
+ * after the host's grant is revoked mid-operation, and a downloaded    *
+ * file must not survive a mid-transfer revocation.                     *
+ * ------------------------------------------------------------------ */
+
+test('result gate: revoked host denies tool result delivery', () => {
+  assert.throws(
+    () =>
+      assertSessionStillAuthorized(
+        { projectPathKey: '/workspace/DSH-plugin', hostId: 'h-sg' },
+        () => false,
+      ),
+    /not authorized/,
+  )
+})
+
+test('result gate: granted host still delivers tool results', () => {
+  assert.doesNotThrow(() =>
+    assertSessionStillAuthorized({ projectPathKey: '/workspace/DSH-plugin', hostId: 'h-sg' }, () => true),
+  )
+})
+
+test('result gate: absent predicate is a compatibility no-op', () => {
+  assert.doesNotThrow(() =>
+    assertSessionStillAuthorized({ projectPathKey: '/workspace/DSH-plugin', hostId: 'h-sg' }, undefined),
+  )
+})
+
+test('download discard: revoked host removes the local file', () => {
+  const p = join(tmpdir(), `dsh-ssh-tunnel-revoke-${process.pid}.txt`)
+  writeFileSync(p, 'secret data', 'utf8')
+  const discarded = discardRevokedLocalFile(
+    { projectPathKey: '/workspace/DSH-plugin', hostId: 'h-sg' },
+    p,
+    () => false,
+  )
+  assert.equal(discarded, true)
+  assert.equal(existsSync(p), false)
+})
+
+test('download discard: granted host keeps the local file', () => {
+  const p = join(tmpdir(), `dsh-ssh-tunnel-grant-${process.pid}.txt`)
+  writeFileSync(p, 'data', 'utf8')
+  try {
+    const discarded = discardRevokedLocalFile(
+      { projectPathKey: '/workspace/DSH-plugin', hostId: 'h-sg' },
+      p,
+      () => true,
+    )
+    assert.equal(discarded, false)
+    assert.equal(existsSync(p), true)
+  } finally {
+    try {
+      unlinkSync(p)
+    } catch {}
+  }
 })
 
 await Promise.all(pending)
