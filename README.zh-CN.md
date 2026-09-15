@@ -125,7 +125,7 @@ npm run check
 
 ### xterm 加载
 
-仅使用 DSH web profile 中打包的 `@xterm/xterm`，不再回退 CDN。
+`@xterm/xterm@5.5.0` 与 `@xterm/addon-fit@0.11.0` 为钉死的运行时依赖。Host 侧把它们的 UMD/CSS 从同源白名单路由下发（`/dsh-ssh-tunnel/vendor/xterm.js|addon-fit.js|xterm.css`）；客户端用普通 `<script>`/`<link>` 加载。无 CDN 回退，也不依赖模块表。
 
 ## 许可证
 

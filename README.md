@@ -125,7 +125,7 @@ npm run check
 
 ### xterm loading
 
-Requires bundled `@xterm/xterm` from the DSH web profile. There is no CDN fallback.
+`@xterm/xterm@5.5.0` + `@xterm/addon-fit@0.11.0` are pinned runtime dependencies. The host serves their UMD/CSS from an allowlisted same-origin route (`/dsh-ssh-tunnel/vendor/xterm.js|addon-fit.js|xterm.css`); the client loads them with plain `<script>`/`<link>` tags. No CDN fallback and no module-table requirement.
 
 ## License
 

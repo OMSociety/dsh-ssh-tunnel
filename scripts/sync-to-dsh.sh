@@ -13,8 +13,8 @@ rsync -a --delete \
 }
 cp -a "$ROOT/lib/." "$DEST/lib/"
 cp -a "$ROOT/scripts/." "$DEST/scripts/"
-# keep existing node_modules; reinstall if ssh2 missing
-if [[ ! -d "$DEST/node_modules/ssh2" ]]; then
+# keep existing node_modules; reinstall if any runtime dep (ssh2 / xterm) is missing
+if [[ ! -d "$DEST/node_modules/ssh2" || ! -d "$DEST/node_modules/@xterm/xterm" || ! -d "$DEST/node_modules/@xterm/addon-fit" ]]; then
   (cd "$DEST" && npm install --omit=dev --ignore-scripts)
 fi
 echo "synced -> $DEST"

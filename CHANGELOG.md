@@ -2,6 +2,14 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## 0.4.6 — 2026-09-15
+
+### Fixed
+- **Terminal no longer fails with "无法加载 xterm".** `require("@xterm/xterm")` is unresolvable in the DSH browser module table (only platform seeds and registered plugin rows answer), and the 0.4.4 removal of the jsDelivr fallback left no working path. The plugin now pins `@xterm/xterm@5.5.0` + `@xterm/addon-fit@0.11.0` as runtime dependencies and serves their UMD/CSS from a same-origin allowlisted route (`/dsh-ssh-tunnel/vendor/*`); the client loads them with plain `<script>`/`<link>` tags, with the old module-table path kept only as a fallback. No third-party CDN is ever fetched.
+
+### Security
+- **Vendor route is allowlisted.** `/dsh-ssh-tunnel/vendor/*` resolves exactly three asset names; anything else (including path traversal) is a 404 sent without touching the filesystem path.
+
 ## 0.4.5 — 2026-09-09
 
 ### Removed

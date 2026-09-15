@@ -1,6 +1,6 @@
 {
   "name": "dsh-ssh-tunnel",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "description": "Multi-host SSH tunnel and SSHManager tool for DeepSeek Harness (project-scoped grants)",
   "type": "module",
   "license": "MIT",
@@ -51,6 +51,8 @@
     }
   },
   "dependencies": {
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "5.5.0",
     "ssh2": "^1.17.0"
   },
   "peerDependencies": {

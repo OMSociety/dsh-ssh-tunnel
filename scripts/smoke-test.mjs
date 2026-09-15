@@ -46,6 +46,11 @@ import {
   assertSessionStillAuthorized,
   discardRevokedLocalFile,
 } from '../lib/shared/session-auth.js'
+import {
+  VENDOR_ASSETS,
+  isVendorAssetAllowed,
+  resolveVendorAsset,
+} from '../lib/shared/vendor.js'
 
 let failed = 0
 const pending = []
@@ -419,6 +424,24 @@ test('download discard: granted host keeps the local file', () => {
       unlinkSync(p)
     } catch {}
   }
+})
+
+test('vendor: allowlist resolves the three xterm assets to existing files', () => {
+  assert.deepEqual(Object.keys(VENDOR_ASSETS).sort(), ['addon-fit.js', 'xterm.css', 'xterm.js'])
+  for (const [name, entry] of Object.entries(VENDOR_ASSETS)) {
+    assert.equal(isVendorAssetAllowed(name), true, name)
+    const r = resolveVendorAsset(name)
+    assert.equal(existsSync(r.path), true, `${name} -> ${r.path}`)
+    assert.equal(typeof r.type, 'string')
+  }
+})
+
+test('vendor: unknown or traversing names are rejected', () => {
+  assert.equal(isVendorAssetAllowed('../../etc/passwd'), false)
+  assert.equal(isVendorAssetAllowed('xterm.js?x=1'), false)
+  assert.equal(isVendorAssetAllowed('xterm.js/../'), false)
+  assert.throws(() => resolveVendorAsset('../../etc/passwd'), /not allowed/)
+  assert.throws(() => resolveVendorAsset(''), /not allowed/)
 })
 
 await Promise.all(pending)

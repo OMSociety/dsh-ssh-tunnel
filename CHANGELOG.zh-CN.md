@@ -2,6 +2,14 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## 0.4.6 — 2026-09-15
+
+### 修复
+- **终端不再报「无法加载 xterm」。** `require("@xterm/xterm")` 在 DSH 浏览器模块表里永远解析不到（只回答平台种子与已注册插件 row），而 0.4.4 移除 jsDelivr 回退后没有可用路径。插件现把 `@xterm/xterm@5.5.0` 与 `@xterm/addon-fit@0.11.0` 钉为运行时依赖，并将其 UMD/CSS 从同源白名单路由（`/dsh-ssh-tunnel/vendor/*`）下发；客户端用普通 `<script>`/`<link>` 标签加载，原来的模块表 require 路径仅作降级保留。永不访问第三方 CDN。
+
+### 安全
+- **Vendor 路由白名单化。** `/dsh-ssh-tunnel/vendor/*` 只解析三个固定资源名；其它任何请求（含路径穿越）一律 404，且不会触碰文件系统。
+
 ## 0.4.5 — 2026-09-09
 
 ### 移除
