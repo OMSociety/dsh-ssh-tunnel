@@ -72,7 +72,7 @@
     "CHANGELOG.md",
     "LICENSE",
     "README.md",
-    "README.zh-CN.md",
+    "README_en.md",
     "cordis.patch.yml",
     "lib",
     "scripts/install.sh",
