@@ -5,7 +5,7 @@
 ## 未发布
 
 ### 修复
-- **`scripts/smoke-test.mjs` 现在会打进安装包。** `npm test` / `npm run check` 都会运行它，但 `files` 白名单把它漏掉了，于是任何从打包产物安装的副本都以 `MODULE_NOT_FOUND` 失败，声明的自检根本跑不起来。`scripts/portal-probe.mjs` 与 `scripts/sync-to-dsh.sh` 一并补齐，与 `dsh-git-forge` 的打包清单对齐。
+- **`scripts/smoke-test.mjs` 现在会打进安装包。** `npm test` / `npm run check` 都会运行它，但 `files` 白名单把它漏掉了，于是任何从打包产物安装的副本都以 `MODULE_NOT_FOUND` 失败，声明的自检根本跑不起来。`scripts/portal-probe.mjs` 与 `scripts/sync-to-dsh.sh` 一并补齐，与 `dsh-git-forge` 采用同一打包策略（`scripts/` 下的脚本全部进包）。
 
 ## 0.4.6 — 2026-09-15
 

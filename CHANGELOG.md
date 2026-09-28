@@ -5,7 +5,7 @@
 ## Unreleased
 
 ### Fixed
-- **`scripts/smoke-test.mjs` now ships in the packed install.** `npm test` / `npm run check` run it, but the `files` allowlist omitted it, so any install from the packed artifact failed with `MODULE_NOT_FOUND` and the declared self-check could not run at all. `scripts/portal-probe.mjs` and `scripts/sync-to-dsh.sh` are shipped alongside it, matching the packaging list of `dsh-git-forge`.
+- **`scripts/smoke-test.mjs` now ships in the packed install.** `npm test` / `npm run check` run it, but the `files` allowlist omitted it, so any install from the packed artifact failed with `MODULE_NOT_FOUND` and the declared self-check could not run at all. `scripts/portal-probe.mjs` and `scripts/sync-to-dsh.sh` are shipped alongside it, following the same packaging strategy as `dsh-git-forge` (every script under `scripts/` goes into the tarball).
 
 ## 0.4.6 — 2026-09-15
 
