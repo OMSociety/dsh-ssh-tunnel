@@ -7,9 +7,9 @@ mkdir -p "$DEST/lib/shared" "$DEST/scripts"
 rsync -a --delete \
   --exclude node_modules \
   --exclude package-lock.json \
-  "$ROOT/package.json" "$ROOT/cordis.patch.yml" "$ROOT/LICENSE" "$ROOT/README.md" "$ROOT/README.zh-CN.md" "$ROOT/CHANGELOG.md" "$ROOT/CHANGELOG.zh-CN.md" \
+  "$ROOT/package.json" "$ROOT/cordis.patch.yml" "$ROOT/LICENSE" "$ROOT/README.md" "$ROOT/README.zh-CN.md" "$ROOT/CHANGELOG.md" \
   "$DEST/" 2>/dev/null || {
-  cp -a "$ROOT/package.json" "$ROOT/cordis.patch.yml" "$ROOT/LICENSE" "$ROOT/README.md" "$ROOT/README.zh-CN.md" "$ROOT/CHANGELOG.md" "$ROOT/CHANGELOG.zh-CN.md" "$DEST/"
+  cp -a "$ROOT/package.json" "$ROOT/cordis.patch.yml" "$ROOT/LICENSE" "$ROOT/README.md" "$ROOT/README.zh-CN.md" "$ROOT/CHANGELOG.md" "$DEST/"
 }
 cp -a "$ROOT/lib/." "$DEST/lib/"
 cp -a "$ROOT/scripts/." "$DEST/scripts/"
