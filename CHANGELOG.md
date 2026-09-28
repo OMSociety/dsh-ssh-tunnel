@@ -2,6 +2,11 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## Unreleased
+
+### Fixed
+- **`scripts/smoke-test.mjs` now ships in the packed install.** `npm test` / `npm run check` run it, but the `files` allowlist omitted it, so any install from the packed artifact failed with `MODULE_NOT_FOUND` and the declared self-check could not run at all. `scripts/portal-probe.mjs` and `scripts/sync-to-dsh.sh` are shipped alongside it, matching the packaging list of `dsh-git-forge`.
+
 ## 0.4.6 — 2026-09-15
 
 ### Fixed
