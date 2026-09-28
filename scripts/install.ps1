@@ -2,8 +2,8 @@
 # dsh-ssh-tunnel one-click install (Windows PowerShell 5.1+ / pwsh)
 #
 # Usage:
-#   irm https://raw.githubusercontent.com/thirsty5034/dsh-ssh-tunnel/main/scripts/install.ps1 | iex
-#   & ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/thirsty5034/dsh-ssh-tunnel/main/scripts/install.ps1'))) -From github -Restart
+#   irm https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.ps1 | iex
+#   & ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.ps1'))) -From github -Restart
 # =============================================================================
 param(
   [string]$Version = '',
@@ -15,7 +15,7 @@ param(
 
 $PKG = 'dsh-ssh-tunnel'
 $PLUGIN_ID = 'ssh-tunnel'
-$GITHUB_REPO = if ($env:GITHUB_REPO) { $env:GITHUB_REPO } else { 'thirsty5034/dsh-ssh-tunnel' }
+$GITHUB_REPO = if ($env:GITHUB_REPO) { $env:GITHUB_REPO } else { 'OMSociety/dsh-ssh-tunnel' }
 $REGISTRY = if ($env:REGISTRY) { $env:REGISTRY } else { 'https://registry.npmjs.org' }
 
 if ($env:DSH_HOME) { $DSH_HOME = $env:DSH_HOME }
@@ -55,7 +55,9 @@ function Resolve-AddSpec {
   return "$PKG@github:$GITHUB_REPO#$Version"
 }
 
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Die 'Node.js not found (need >= 18).' }
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Die 'Node.js not found (need >= 20).' }
+$NodeMajor = [int](& node -p "process.versions.node.split('.')[0]")
+if ($NodeMajor -lt 20) { Die "Node.js $(& node -v) is too old (need >= 20)." }
 if (-not (Test-Path $PROFILE_DIR)) { Die "Profile dir missing: $PROFILE_DIR" }
 if (-not (Test-Path $WS_YML)) { Die "Missing $WS_YML" }
 

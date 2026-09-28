@@ -64,7 +64,7 @@
     "ssh2": "^1.17.0"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/cordis": "^4.0.4",
     "@deepseek-ai/dsh-client-locale": ">=0.1.7-rc.2 <0.3.0-0",
     "dsh-better-sidebar": ">=0.12.0"
   },

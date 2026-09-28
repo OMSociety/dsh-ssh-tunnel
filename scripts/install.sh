@@ -39,7 +39,7 @@ done
 
 PKG="dsh-ssh-tunnel"
 PLUGIN_ID="ssh-tunnel"
-GITHUB_REPO="${GITHUB_REPO:-thirsty5034/dsh-ssh-tunnel}"
+GITHUB_REPO="${GITHUB_REPO:-OMSociety/dsh-ssh-tunnel}"
 DSH_HOME="${DSH_HOME:-${HOME:-${USERPROFILE:-}}/.dsh}"
 PROFILE_DIR="$DSH_HOME/profiles/web"
 WS_YML="$PROFILE_DIR/pnpm-workspace.yaml"
@@ -112,7 +112,9 @@ resolve_add_spec() {
   fi
 }
 
-command -v node >/dev/null 2>&1 || die "未找到 node（需要 Node.js ≥ 18）。"
+command -v node >/dev/null 2>&1 || die "未找到 node（需要 Node.js ≥ 20）。"
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null)" || NODE_MAJOR=0
+[ "${NODE_MAJOR:-0}" -ge 20 ] || die "Node.js $(node -v) 过旧（需要 ≥ 20）。"
 [ -d "$PROFILE_DIR" ] || die "找不到 profile 目录：${PROFILE_DIR}（请先运行过 dsh web）"
 [ -f "$WS_YML" ] || die "找不到 ${WS_YML}（请先初始化 web profile）"
 
