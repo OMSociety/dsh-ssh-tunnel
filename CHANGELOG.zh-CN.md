@@ -4,6 +4,9 @@
 
 ## 未发布
 
+### 变更
+- **声明 DSH 兼容性元数据。** `package.json` 现携带 `dsh.manifestVersion: 1`、`engines.dsh: ">=0.1.2-rc.1 <0.2.0"`（作者声明的兼容 DSH 范围，与 `engines.node` 并列；后者随当前生态主流提到 `>=20`），以及覆盖同一范围的 `@deepseek-ai/dsh-client-locale` peer。自 DSH 0.1.7-rc.1 起，插件闸门会把 `@deepseek-ai/dsh` / `@deepseek-ai/dsh-*` 的 peer 范围与运行时版本比对（未声明 DSH peer 则不施加约束）——此前本插件没有任何 DSH peer，在任何宿主上都被静默放行。`dsh.manifestVersion` 与 `engines.dsh` 按清单规范仍只是声明字段。
+
 ### 修复
 - **`scripts/smoke-test.mjs` 现在会打进安装包。** `npm test` / `npm run check` 都会运行它，但 `files` 白名单把它漏掉了，于是任何从打包产物安装的副本都以 `MODULE_NOT_FOUND` 失败，声明的自检根本跑不起来。`scripts/portal-probe.mjs` 与 `scripts/sync-to-dsh.sh` 一并补齐，与 `dsh-git-forge` 采用同一打包策略（`scripts/` 下的脚本全部进包）。
 
