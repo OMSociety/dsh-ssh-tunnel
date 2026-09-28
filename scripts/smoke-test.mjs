@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { existsSync, mkdirSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
-import { normalizeProjectKey, isPathInsideRoots, joinUnderRoot, constrainToWorkspace } from '../lib/shared/path.js'
+import { normalizeProjectKey, isPathInsideRoots, joinUnderRoot, constrainToWorkspace, workspaceRoot } from '../lib/shared/path.js'
 import {
   hostCredentialConfigured,
   publicHost,
@@ -52,6 +52,15 @@ import {
   resolveVendorAsset,
 } from '../lib/shared/vendor.js'
 
+// Hermetic workspace root for the path guard: point it at a throwaway directory
+// so the suite runs on hosts whose real workspace is not `/workspace` (for
+// example Windows drive paths). workspaceRoot() reads the variable at call time.
+const WS_ROOT = join(tmpdir(), `dsh-ssh-ws-${process.pid}`)
+mkdirSync(WS_ROOT, { recursive: true })
+process.env.DSH_SSH_TUNNEL_WORKSPACE_ROOT = WS_ROOT
+const wsPath = (...segs) => normalizeProjectKey(join(WS_ROOT, ...segs))
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 let failed = 0
 const pending = []
 function test(name, fn) {
@@ -78,7 +87,9 @@ function test(name, fn) {
 }
 
 test('normalizeProjectKey strips trailing slash', () => {
-  assert.equal(normalizeProjectKey('/workspace/DSH-plugin/'), '/workspace/DSH-plugin')
+  const key = normalizeProjectKey(wsPath('DSH-plugin') + '/')
+  assert.equal(key, wsPath('DSH-plugin'))
+  assert.ok(!key.endsWith('/') && !key.endsWith('\\'), 'no trailing separator')
 })
 
 test('normalizeProjectKey empty', () => {
@@ -87,20 +98,23 @@ test('normalizeProjectKey empty', () => {
 })
 
 test('isPathInsideRoots allows children only', () => {
-  assert.equal(isPathInsideRoots('/workspace/DSH-plugin/a', ['/workspace/DSH-plugin']), true)
-  assert.equal(isPathInsideRoots('/workspace/other', ['/workspace/DSH-plugin']), false)
-  assert.equal(isPathInsideRoots('/workspace/DSH-plugin', ['/workspace/DSH-plugin']), true)
+  const root = wsPath('DSH-plugin')
+  assert.equal(isPathInsideRoots(wsPath('DSH-plugin', 'a'), [root]), true)
+  assert.equal(isPathInsideRoots(wsPath('other'), [root]), false)
+  assert.equal(isPathInsideRoots(root, [root]), true)
 })
 
 test('joinUnderRoot rejects escape', () => {
-  assert.throws(() => joinUnderRoot('/workspace/DSH-plugin', '../../etc/passwd'))
-  const ok = joinUnderRoot('/workspace/DSH-plugin', 'sub/file.txt')
-  assert.ok(ok.endsWith('/workspace/DSH-plugin/sub/file.txt') || ok.includes('DSH-plugin/sub/file.txt'))
+  const root = wsPath('DSH-plugin')
+  assert.throws(() => joinUnderRoot(root, join('..', '..', 'etc', 'passwd')))
+  const ok = joinUnderRoot(root, join('sub', 'file.txt'))
+  assert.equal(ok, wsPath('DSH-plugin', 'sub', 'file.txt'))
 })
 
 test('constrainToWorkspace rejects lexical escape', () => {
-  assert.throws(() => constrainToWorkspace('/home/node/.dsh/ssh-tunnel/secrets.json'), /must be under \/workspace/)
-  assert.throws(() => constrainToWorkspace('/tmp'), /must be under \/workspace/)
+  const re = new RegExp('must be under ' + escRe(workspaceRoot()))
+  assert.throws(() => constrainToWorkspace('/home/node/.dsh/ssh-tunnel/secrets.json'), re)
+  assert.throws(() => constrainToWorkspace('/tmp'), re)
 })
 
 test('persist: corrupt json throws; atomic write replaces', () => {
@@ -142,16 +156,27 @@ test('http-trust: 0.0.0.0 is not loopback; evil Origin is rejected', () => {
 })
 
 test('constrainToWorkspace rejects outbound symlink', () => {
-  const link = '/workspace/DSH-plugin/.audit-path-guard-link'
+  const base = wsPath('DSH-plugin')
+  const link = join(base, '.audit-path-guard-link')
+  mkdirSync(base, { recursive: true })
   try {
     try { unlinkSync(link) } catch {}
-    symlinkSync('/home/node/.dsh', link)
+    try {
+      // The link target must exist for the realpath walk to observe the escape.
+      symlinkSync(tmpdir(), link, 'dir')
+    } catch (e) {
+      if (e && (e.code === 'EPERM' || e.code === 'EACCES' || e.code === 'ENOSYS')) {
+        console.log('skip  constrainToWorkspace rejects outbound symlink (symlink unavailable)')
+        return
+      }
+      throw e
+    }
     assert.throws(
-      () => constrainToWorkspace(link + '/ssh-tunnel/_nope'),
-      /escapes \/workspace via symlink/,
+      () => constrainToWorkspace(join(link, 'ssh-tunnel', '_nope')),
+      new RegExp('escapes ' + escRe(workspaceRoot()) + ' via symlink'),
     )
     const unlinked = constrainToWorkspace(link, { forUnlink: true })
-    assert.equal(unlinked, link)
+    assert.equal(unlinked, normalizeProjectKey(link))
   } finally {
     try { unlinkSync(link) } catch {}
   }
@@ -312,7 +337,7 @@ function liveRec(id, hostId, projectPathKey) {
 
 test('revoked host: requireLiveSession refuses use of established session', () => {
   const registry = makeRegistry({ isHostAuthorized: () => false })
-  const key = '/workspace/DSH-plugin'
+  const key = normalizeProjectKey('/workspace/DSH-plugin')
   registry.sessions.set('s1', liveRec('s1', 'h-sg', key))
   // Shell / SFTP operations all go through requireLiveSession; a revoked host
   // must not be usable even though the session object is still live.
@@ -321,14 +346,14 @@ test('revoked host: requireLiveSession refuses use of established session', () =
 
 test('granted host: requireLiveSession still allows use', () => {
   const registry = makeRegistry({ isHostAuthorized: () => true })
-  const key = '/workspace/DSH-plugin'
+  const key = normalizeProjectKey('/workspace/DSH-plugin')
   registry.sessions.set('s1', liveRec('s1', 'h-sg', key))
   assert.equal(registry.requireLiveSession('s1', key).id, 's1')
 })
 
 test('revoked host: reconnect refuses to resurrect the session', async () => {
   const registry = makeRegistry({ isHostAuthorized: () => false })
-  const key = '/workspace/DSH-plugin'
+  const key = normalizeProjectKey('/workspace/DSH-plugin')
   const rec = liveRec('s1', 'h-sg', key)
   rec.status = SSH_STATUS_DISCONNECTED
   rec.running = false
@@ -341,11 +366,11 @@ test('revoked host: reconnect refuses to resurrect the session', async () => {
 
 test('requireLiveSession and closeSession require projectPathKey', () => {
   const registry = makeRegistry()
-  const key = '/workspace/DSH-plugin'
+  const key = normalizeProjectKey('/workspace/DSH-plugin')
   registry.sessions.set('s1', liveRec('s1', 'h-sg', key))
   assert.throws(() => registry.requireLiveSession('s1'), /projectPathKey required/)
   assert.throws(() => registry.requireLiveSession('s1', ''), /projectPathKey required/)
-  assert.throws(() => registry.requireLiveSession('s1', '/workspace/hk'), /not in this project/)
+  assert.throws(() => registry.requireLiveSession('s1', normalizeProjectKey('/workspace/hk')), /not in this project/)
   assert.throws(() => registry.closeSession('s1'), /projectPathKey required/)
   assert.equal(registry.closeSession('s1', key).ok, true)
   assert.equal(registry.sessions.has('s1'), false)
@@ -353,8 +378,8 @@ test('requireLiveSession and closeSession require projectPathKey', () => {
 
 test('closeSessionsForHost terminates only the revoked host sessions in the project', () => {
   const registry = makeRegistry()
-  const keyA = '/workspace/DSH-plugin'
-  const keyB = '/workspace/other'
+  const keyA = normalizeProjectKey('/workspace/DSH-plugin')
+  const keyB = normalizeProjectKey('/workspace/other')
   registry.sessions.set('a1', liveRec('a1', 'h-sg', keyA)) // revoked host, this project
   registry.sessions.set('b1', liveRec('b1', 'h2', keyA)) // other host, same project
   registry.sessions.set('c1', liveRec('c1', 'h-sg', keyB)) // same host, other project

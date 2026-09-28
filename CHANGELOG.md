@@ -2,6 +2,12 @@
 
 [English](./CHANGELOG.md) | [简体中文](./CHANGELOG.zh-CN.md)
 
+## Unreleased
+
+### Fixed
+- **The local-path guard now works on hosts whose workspace is not `/workspace`.** `isPathInsideRoots` compared a `root + '/'` prefix against platform-native keys (separator- and case-sensitive), so on Windows even `C:\ws\child` inside `C:\ws` was judged outside; `constrainToWorkspace` additionally hard-coded `/workspace`, so real workspace paths were rejected wherever it guards (SFTP `local_path` handling and the local file APIs). Containment is now judged on a separator-unified, Win32-case-folded comparison form, and the guard root still defaults to `/workspace` but can be pointed at the real workspace with `DSH_SSH_TUNNEL_WORKSPACE_ROOT`.
+- **Smoke tests are platform-portable and hermetic.** The fixtures hard-coded POSIX paths — 9 tests fail on a Windows checkout with dependencies installed, covering path containment, session-to-project matching (raw fixture keys vs `normalizeProjectKey` on the production side), and the symlink escape case (its fixture directory did not exist). The suite now derives expectations through `normalizeProjectKey`, runs the path guard against a throwaway root, and skips the symlink case gracefully where symlink creation is unavailable.
+
 ## 0.4.6 — 2026-09-15
 
 ### Fixed
