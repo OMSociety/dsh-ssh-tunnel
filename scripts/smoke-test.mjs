@@ -6,8 +6,8 @@
 import assert from 'node:assert/strict'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { existsSync, mkdirSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
-import { normalizeProjectKey, isPathInsideRoots, joinUnderRoot, constrainToWorkspace, workspaceRoot } from '../lib/shared/path.js'
+import { existsSync, mkdirSync, realpathSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
+import { normalizeProjectKey, isPathInsideRoots, joinUnderRoot, constrainToWorkspace, workspaceRoot, workspaceRoots } from '../lib/shared/path.js'
 import {
   hostCredentialConfigured,
   publicHost,
@@ -121,6 +121,34 @@ test('constrainToWorkspace rejects lexical escape', () => {
   const re = new RegExp('must be under ' + escRe(workspaceRoot()))
   assert.throws(() => constrainToWorkspace('/home/node/.dsh/ssh-tunnel/secrets.json'), re)
   assert.throws(() => constrainToWorkspace('/tmp'), re)
+})
+
+// The guard used to know only `/workspace`, so on hosts whose project
+// workspace is a Windows drive path every real local path was rejected and
+// SFTP upload/download never started. The project workspace the host passes at
+// call time is now an allowed root (the env override stays allowed too).
+test('constrainToWorkspace accepts the project workspace root', () => {
+  const project = join(realpathSync(WS_ROOT), 'DSH-project')
+  mkdirSync(project, { recursive: true })
+  const file = join(project, 'upload.txt')
+  writeFileSync(file, 'probe', 'utf8')
+  assert.equal(constrainToWorkspace(file, { root: project }), file)
+  assert.equal(
+    constrainToWorkspace(join('nested', 'child.txt'), { root: project }),
+    join(project, 'nested', 'child.txt'),
+  )
+  assert.equal(constrainToWorkspace(wsPath('DSH-plugin', 'a'), { root: project }), wsPath('DSH-plugin', 'a'))
+  assert.throws(
+    () => constrainToWorkspace(join(tmpdir(), 'dsh-ssh-outside-probe.txt'), { root: project }),
+    /must be under/,
+  )
+})
+
+test('workspaceRoots lists the project workspace then the override', () => {
+  const project = normalizeProjectKey(join(realpathSync(WS_ROOT), 'DSH-project'))
+  assert.deepEqual(workspaceRoots(), [normalizeProjectKey(WS_ROOT)])
+  assert.deepEqual(workspaceRoots(project), [project, normalizeProjectKey(WS_ROOT)])
+  assert.equal(workspaceRoot(project), project)
 })
 
 test('persist: corrupt json throws; atomic write replaces', () => {
