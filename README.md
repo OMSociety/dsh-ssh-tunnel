@@ -2,6 +2,8 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
+> **Note:** This npm package is published from the [OMSociety fork](https://github.com/OMSociety/dsh-ssh-tunnel); [thirsty5034/dsh-ssh-tunnel](https://github.com/thirsty5034/dsh-ssh-tunnel) is the upstream project and the author of this code (MIT, see [LICENSE](./LICENSE)). This release adds the local-path guard fix for hosts whose workspace is not `/workspace`, restores the smoke-test script in the packed install, and declares DSH host compatibility. Install: `dsh plugin --profile web add dsh-ssh-tunnel`.
+
 DeepSeek Harness community plugin: multi-host **SSH tunnel** + **SSHManager** for [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar).
 
 - Host inventory + secrets (never exposed to the model)  

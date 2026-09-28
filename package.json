@@ -1,18 +1,24 @@
 {
   "name": "dsh-ssh-tunnel",
-  "version": "0.4.6",
+  "version": "1.0.0",
   "description": "Multi-host SSH tunnel and SSHManager tool for DeepSeek Harness (project-scoped grants)",
   "type": "module",
   "license": "MIT",
   "author": "thirsty5034",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/thirsty5034/dsh-ssh-tunnel.git"
+    "url": "git+https://github.com/OMSociety/dsh-ssh-tunnel.git"
   },
-  "homepage": "https://github.com/thirsty5034/dsh-ssh-tunnel#readme",
+  "homepage": "https://github.com/OMSociety/dsh-ssh-tunnel#readme",
   "bugs": {
-    "url": "https://github.com/thirsty5034/dsh-ssh-tunnel/issues"
+    "url": "https://github.com/OMSociety/dsh-ssh-tunnel/issues"
   },
+  "contributors": [
+    {
+      "name": "OMSociety",
+      "url": "https://github.com/OMSociety"
+    }
+  ],
   "publishConfig": {
     "access": "public"
   },
