@@ -2,7 +2,7 @@
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
-> **提示：**本 npm 包由 [OMSociety fork](https://github.com/OMSociety/dsh-ssh-tunnel) 发布；上游项目为 [thirsty5034/dsh-ssh-tunnel](https://github.com/thirsty5034/dsh-ssh-tunnel)，也是本代码的作者（MIT，见 [LICENSE](./LICENSE)）。本版本加入工作区非 `/workspace` 时的本地路径守卫修复、补回打包内的自检脚本，并声明 DSH 宿主兼容。修复与问题反馈都走该 fork。安装：`dsh plugin --profile web add dsh-ssh-tunnel`。
+> **提示：**本仓库是 `dsh-ssh-tunnel` 的维护主线，在 [OMSociety 仓库](https://github.com/OMSociety/dsh-ssh-tunnel) 独立延续（已于 2026-09-28 脱离 fork 网络）；上游项目为 [thirsty5034/dsh-ssh-tunnel](https://github.com/thirsty5034/dsh-ssh-tunnel)，也是本代码的作者（MIT，见 [LICENSE](./LICENSE)）。1.0.0 加入工作区非 `/workspace` 时的本地路径守卫修复、补回打包内的自检脚本，并声明 DSH 宿主兼容。修复与问题反馈都在本仓库处理。
 
 DeepSeek Harness **社区插件**：多机 **SSH 隧道** + **SSHManager**，挂载于 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)。
 
