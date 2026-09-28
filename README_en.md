@@ -1,7 +1,7 @@
 <p align="center"><a href="README.md">简体中文</a> | <strong>English</strong></p>
 
 <div align="center">
-  <h1>dsh-ssh-tunnel</h1>
+  <h1>DSH SSH Tunnel</h1>
   <p>A multi-host SSH workbench for DeepSeek Harness: host inventory, per-project grants, and a terminal plus dual-pane SFTP in the sidebar.</p>
   <p>The model drives the <strong>SSHManager</strong> tool to run commands and move files; you manage hosts and grants in the sidebar. <strong>Secrets never enter model context</strong>.</p>
 
