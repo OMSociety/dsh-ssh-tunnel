@@ -6,7 +6,7 @@
   <p>The model drives the <strong>SSHManager</strong> tool to run commands and move files; you manage hosts and grants in the sidebar. <strong>Secrets never enter model context</strong>.</p>
 
   <p>
-    <a href="https://github.com/OMSociety/dsh-ssh-tunnel/releases"><img src="https://img.shields.io/badge/version-1.0.0-4f6ef7" alt="Version"></a>
+    <a href="https://github.com/OMSociety/dsh-ssh-tunnel/releases"><img src="https://img.shields.io/github/v/tag/OMSociety/dsh-ssh-tunnel?label=version&color=4f6ef7" alt="Version"></a>
     <a href="https://github.com/deepseek-ai/dsh"><img src="https://img.shields.io/badge/DSH-%3E%3D0.1.7--rc.2_%3C0.3.0--0-4f6ef7" alt="DSH"></a>
     <a href="LICENSE"><img src="https://img.shields.io/github/license/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="License"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/stargazers"><img src="https://img.shields.io/github/stars/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Stars"></a>
@@ -45,17 +45,25 @@ This package is a **DSH-native implementation** (Cordis host/client plugin, `dsh
 
 ## Quick start
 
-**Option 1: install from the CLI (recommended)**
+**Option 1: install from npm (recommended)**
 
 ```powershell
 # 1) stop dsh web first (a running server holds the dependency lock; start it again afterwards)
-dsh plugin --profile web add "github:OMSociety/dsh-ssh-tunnel"
+dsh plugin --profile web add "dsh-ssh-tunnel@1.0.0"
 # 2) restart dsh web
+```
+
+The package is published to npm and ships the prebuilt artifacts, so no local build step is involved. Replace `@1.0.0` to install another version.
+
+**Option 2: install from the GitHub source**
+
+```powershell
+dsh plugin --profile web add "github:OMSociety/dsh-ssh-tunnel"
 ```
 
 To reproduce a specific install, pin a ref by appending `#<tag or commit sha>` to the repository URL.
 
-**Option 2: one-line installer**
+**Option 3: one-line installer**
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.sh | bash
@@ -65,7 +73,7 @@ curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scrip
 irm https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.ps1 | iex
 ```
 
-Besides installing, the script adds this plugin to the profile's `minimumReleaseAgeExclude`, verifies that `dsh.profile.bundles` really received the entry, and removes the mount older versions wrote by hand into the profile's `cordis.patch.yml`. Add `--dry-run` to print the plan without touching anything.
+The script installs from the GitHub source by default (`bash scripts/install.sh --from npm 1.0.0` switches to npm). Besides installing, it adds this plugin to the profile's `minimumReleaseAgeExclude`, verifies that `dsh.profile.bundles` really received the entry, and removes the mount older versions wrote by hand into the profile's `cordis.patch.yml`. Add `--dry-run` to print the plan without touching anything.
 
 > **Note:** After installing, **refresh the browser page** for the "SSH Tunnel" entry to appear in the sidebar — restarting the host alone is not enough, because the client artifact is fetched when the page loads.
 
