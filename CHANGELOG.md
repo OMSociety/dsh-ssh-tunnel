@@ -14,7 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 变更
 
-- **README 按项目文档规范重排，主文档改为中文。** `README.md` 现在是中文主文档（主视觉块、徽章行与锚点导航，零 emoji），英文镜像为 `README_en.md` 且语言导航在第 1 行；原 `README.zh-CN.md` 随之移除，`package.json` 的 `files` 同步改名。正文内容重新按代码与实测复述：侧栏 Tab 名取自注册的字典（中文界面为「SSH 隧道」），三页与注册的子页一致，`SSHManager` 动作表与已注册的工具契约一致，本地路径守卫按修复后的实际行为描述为「项目工作区根」。
 - **声明 DSH 兼容性元数据。** `package.json` 现携带 `dsh.manifestVersion: 1`、`engines.dsh: ">=0.1.7-rc.2 <0.3.0-0"`（作者声明的兼容 DSH 范围，与 `engines.node` 并列；后者随当前生态主流提到 `>=20`），以及覆盖同一范围的 `@deepseek-ai/dsh-client-locale` peer——它同时覆盖 0.1.7 与 0.2 两条线（0.1.7-rc.2、0.2.0-rc.1、0.2.0 及后续 0.2.x），上界写作 `<0.3.0-0` 以免放行 0.3 的预发布。自 DSH 0.1.7-rc.1 起，插件闸门会把 `@deepseek-ai/dsh` / `@deepseek-ai/dsh-*` 的 peer 范围与运行时版本比对（未声明 DSH peer 则不施加约束）——此前本插件没有任何 DSH peer，在任何宿主上都被静默放行。`dsh.manifestVersion` 与 `engines.dsh` 按清单规范仍只是声明字段。
 
 ### 修复
@@ -29,7 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **The README has been restructured to the project documentation standard, with Chinese as the main document.** `README.md` is now the Chinese main document (hero block, badge row and anchor navigation, no emoji), `README_en.md` is the English mirror with the language navigation on line 1, and `README.zh-CN.md` is gone; the `package.json` `files` list follows the rename. The content was re-derived from the code and from live behavior: the sidebar tab name comes from the registered dictionary, the three pages match the registered sub-tabs, the `SSHManager` action table matches the registered tool contract, and the local path guard is described as the project workspace root that the fix now enforces.
 - **Declare DSH compatibility metadata.** `package.json` now carries `dsh.manifestVersion: 1`, `engines.dsh: ">=0.1.7-rc.2 <0.3.0-0"` (the author-declared compatible DSH range, sitting beside `engines.node`, which is raised to `>=20` like current ecosystem plugins), and a `@deepseek-ai/dsh-client-locale` peer over the same range — it covers the 0.1.7 and 0.2 lines alike (0.1.7-rc.2, 0.2.0-rc.1, 0.2.0 and later 0.2.x), with `<0.3.0-0` as the upper bound so that 0.3 prereleases stay out. Since DSH 0.1.7-rc.1 the plugin gate compares `@deepseek-ai/dsh` / `@deepseek-ai/dsh-*` peer ranges against the running runtime (missing peers impose no constraint) — without a DSH peer this plugin passed every host silently. `dsh.manifestVersion` and `engines.dsh` stay declarative, as the manifest spec defines them.
 
 ### Fixed
