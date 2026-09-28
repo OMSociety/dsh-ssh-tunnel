@@ -27,7 +27,8 @@
     "dsh-better-sidebar"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20",
+    "dsh": ">=0.1.2 <0.2.0"
   },
   "main": "lib/index.js",
   "exports": {
@@ -40,6 +41,7 @@
     "check": "node --check lib/index.js && node scripts/smoke-test.mjs"
   },
   "dsh": {
+    "manifestVersion": 1,
     "bundle": {
       "patch": "./cordis.patch.yml"
     },
@@ -57,6 +59,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-client-locale": ">=0.1.2 <0.2.0",
     "dsh-better-sidebar": ">=0.12.0"
   },
   "files": [
