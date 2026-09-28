@@ -104,6 +104,12 @@ test('isPathInsideRoots allows children only', () => {
   assert.equal(isPathInsideRoots(root, [root]), true)
 })
 
+test('isPathInsideRoots accepts children of filesystem roots', () => {
+  const root = normalizeProjectKey('/')
+  assert.equal(isPathInsideRoots(normalizeProjectKey('/etc/passwd'), [root]), true)
+  assert.equal(isPathInsideRoots(root, [root]), true)
+})
+
 test('joinUnderRoot rejects escape', () => {
   const root = wsPath('DSH-plugin')
   assert.throws(() => joinUnderRoot(root, join('..', '..', 'etc', 'passwd')))
