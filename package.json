@@ -68,6 +68,9 @@
     "cordis.patch.yml",
     "lib",
     "scripts/install.sh",
-    "scripts/install.ps1"
+    "scripts/install.ps1",
+    "scripts/portal-probe.mjs",
+    "scripts/smoke-test.mjs",
+    "scripts/sync-to-dsh.sh"
   ]
 }

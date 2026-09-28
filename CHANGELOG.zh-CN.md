@@ -5,6 +5,8 @@
 ## 未发布
 
 ### 修复
+- **`scripts/smoke-test.mjs` 现在会打进安装包。** `npm test` / `npm run check` 都会运行它，但 `files` 白名单把它漏掉了，于是任何从打包产物安装的副本都以 `MODULE_NOT_FOUND` 失败，声明的自检根本跑不起来。`scripts/portal-probe.mjs` 与 `scripts/sync-to-dsh.sh` 一并补齐，与 `dsh-git-forge` 采用同一打包策略（`scripts/` 下的脚本全部进包）。
+
 - **本地路径守卫在工作区不是 `/workspace` 的宿主上恢复正常。** `isPathInsideRoots` 用 `root + '/'` 前缀对比平台原生形态的键（分隔符与大小写都敏感），于是 Windows 上连 `C:\ws\child` 在 `C:\ws` 内都被判为外部；`constrainToWorkspace` 还把 `/workspace` 写死，凡由它把守的地方（SFTP 的 `local_path` 与本地文件 API）都会拒绝真实工作区路径。现在包含判断在「统一分隔符、Win32 折叠大小写」的比较形态上进行；守卫根默认仍为 `/workspace`，但可用 `DSH_SSH_TUNNEL_WORKSPACE_ROOT` 指向真实工作区。
 - **自检用例可移植且自洽。** 夹具硬编码 POSIX 路径——装好依赖的 Windows 检出上固定挂 9 个用例，覆盖路径包含、会话与项目的匹配（夹具键是裸字符串而生产侧会过 `normalizeProjectKey`）、以及符号链接逃逸用例（其夹具目录根本不存在）。现在套件经 `normalizeProjectKey` 推导期望值、把路径守卫指向一次性根目录，并在无法创建符号链接的环境里优雅跳过该用例。
 
