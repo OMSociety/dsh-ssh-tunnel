@@ -16,8 +16,6 @@
 <a href="#这是什么">这是什么</a> • <a href="#核心特性">核心特性</a> • <a href="#快速开始">快速开始</a> • <a href="#侧栏">侧栏</a> • <a href="#模型工具">模型工具</a> • <a href="#安全">安全</a> • <a href="#开发">开发</a> • <a href="#许可证与作者">许可证与作者</a>
 </div>
 
-> **提示：**本仓库是 `dsh-ssh-tunnel` 的维护主线，在 [OMSociety 仓库](https://github.com/OMSociety/dsh-ssh-tunnel) 独立延续（2026-09-28 起脱离 fork 网络）。上游项目与代码作者是 [thirsty5034/dsh-ssh-tunnel](https://github.com/thirsty5034/dsh-ssh-tunnel)（MIT，见 [LICENSE](LICENSE)）。修复与问题反馈都在本仓库处理。
-
 ## 这是什么
 
 **dsh-ssh-tunnel** 是 [DeepSeek Harness](https://github.com/deepseek-ai/dsh) 的社区插件，挂在右侧栏宿主 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 上：把多台 SSH 主机收进一个**主机库**，按项目授权，然后在中央面板里开**交互式终端**（xterm）或**双栏 SFTP**。

@@ -14,8 +14,6 @@
   </p>
 </div>
 
-> **Note:** This is the maintained line of `dsh-ssh-tunnel`, continued independently at the [OMSociety repository](https://github.com/OMSociety/dsh-ssh-tunnel) (standalone since 2026-09-28). The upstream project and the author of this code is [thirsty5034/dsh-ssh-tunnel](https://github.com/thirsty5034/dsh-ssh-tunnel) (MIT, see [LICENSE](LICENSE)). Fixes and issue reports are handled in this repository.
-
 ## What this is
 
 **dsh-ssh-tunnel** is a community plugin for [DeepSeek Harness](https://github.com/deepseek-ai/dsh), mounted in the sidebar host [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar). It collects your SSH hosts into one **host inventory**, authorizes them per project, and then opens an **interactive terminal** (xterm) or **dual-pane SFTP** in the center panel.
