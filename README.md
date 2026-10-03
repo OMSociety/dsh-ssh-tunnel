@@ -1,6 +1,7 @@
 <p align="center"><strong>简体中文</strong> | <a href="README_en.md">English</a></p>
 
 <div align="center">
+  <img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/logo.png" alt="DSH SSH Tunnel" width="160">
   <h1>DSH SSH Tunnel</h1>
   <p>DeepSeek Harness 的多机 SSH 工作台：主机库、按项目授权、右侧栏里的终端与双栏 SFTP。</p>
   <p>模型用 <strong>SSHManager</strong> 工具执行命令、传文件；你在侧栏管主机与授权。<strong>密钥不进模型上下文</strong>。</p>
