@@ -74,7 +74,7 @@ irm https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/inst
 
 The script installs from the GitHub source by default (`bash scripts/install.sh --from npm 1.0.0` switches to npm). Besides installing, it adds this plugin to the profile's `minimumReleaseAgeExclude`, verifies that `dsh.profile.bundles` really received the entry, and removes the mount older versions wrote by hand into the profile's `cordis.patch.yml`. Add `--dry-run` to print the plan without touching anything.
 
-> **Note:** After installing, **refresh the browser page** for the "SSH Tunnel" entry to appear in the sidebar — restarting the host alone is not enough, because the client artifact is fetched when the page loads.
+> **Note**: After installing, **refresh the browser page** for the "SSH Tunnel" entry to appear in the sidebar — restarting the host alone is not enough, because the client artifact is fetched when the page loads.
 
 **First run**
 
