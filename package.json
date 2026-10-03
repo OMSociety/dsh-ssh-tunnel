@@ -1,6 +1,6 @@
 {
   "name": "dsh-ssh-tunnel",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Multi-host SSH tunnel and SSHManager tool for DeepSeek Harness (project-scoped grants)",
   "type": "module",
   "license": "MIT",
@@ -37,8 +37,10 @@
     "dsh": ">=0.1.7-rc.2 <0.3.0-0"
   },
   "main": "lib/index.js",
+  "icon": "./icon.svg",
   "exports": {
     ".": "./lib/index.js",
+    "./locale/*.json": "./locale/*.json",
     "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
@@ -79,6 +81,8 @@
     "scripts/install.ps1",
     "scripts/portal-probe.mjs",
     "scripts/smoke-test.mjs",
-    "scripts/sync-to-dsh.sh"
+    "scripts/sync-to-dsh.sh",
+    "icon.svg",
+    "locale/*.json"
   ]
 }

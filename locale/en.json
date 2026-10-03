@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "SSH Tunnel",
+    "description": "A multi-host SSH bench: host library, per-project grants, and a terminal with dual-pane SFTP in the right sidebar."
+  }
+}
