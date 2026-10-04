@@ -17,7 +17,7 @@
 
 ## What this is
 
-**dsh-ssh-tunnel** is a community plugin for [DeepSeek Harness](https://github.com/deepseek-ai/dsh), mounted in the sidebar host [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar). It collects your SSH hosts into one **host inventory**, authorizes them per project, and then opens an **interactive terminal** (xterm) or **dual-pane SFTP** in the center panel.
+**DSH SSH Tunnel** is a community plugin for [DeepSeek Harness](https://github.com/deepseek-ai/dsh), mounted in the sidebar host [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar). It collects your SSH hosts into one **host inventory**, authorizes them per project, and then opens an **interactive terminal** (xterm) or **dual-pane SFTP** in the center panel.
 
 It does **not** replace the global `fs` / `subprocess` with a remote disk: remote operations happen only in the `SSHManager` tool you call explicitly and inside the panel, and local and remote files remain two clearly separated sides.
 

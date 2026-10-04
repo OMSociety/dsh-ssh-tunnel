@@ -19,7 +19,7 @@
 
 ## 这是什么
 
-**dsh-ssh-tunnel** 是 [DeepSeek Harness](https://github.com/deepseek-ai/dsh) 的社区插件，挂在右侧栏宿主 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 上：把多台 SSH 主机收进一个**主机库**，按项目授权，然后在中央面板里开**交互式终端**（xterm）或**双栏 SFTP**。
+**DSH SSH Tunnel** 是 [DeepSeek Harness](https://github.com/deepseek-ai/dsh) 的社区插件，挂在右侧栏宿主 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 上：把多台 SSH 主机收进一个**主机库**，按项目授权，然后在中央面板里开**交互式终端**（xterm）或**双栏 SFTP**。
 
 它**不会**把全局 `fs` / `subprocess` 换成一个远程盘：远端操作只发生在你显式调用的 `SSHManager` 工具与面板里，本地文件与远端文件始终是两侧分明的东西。
 
