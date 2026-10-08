@@ -29,8 +29,6 @@
 
 **产品形态与部分 UX 参考开源项目 [LiveAgent](https://github.com/thirsty5034/LiveAgent)**（多机 SSH 主机库、按项目授权、侧栏隧道管理、中央终端 / SFTP 等）。
 
-本仓库是 **DSH 原生实现**（Cordis host/client、`dsh-better-sidebar` Tab、`SSHManager` 工具、DSH 本地密钥布局），**不是** LiveAgent 的 git fork，也**不**内嵌 LiveAgent 源码。对照设计时请遵守 LiveAgent 自身许可证。
-
 ## 核心特性
 
 | 特性 | 说明 |
@@ -94,14 +92,6 @@ curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scrip
 - profile 缺失或不存在时脚本报错并列出实存 profile，退出码 2
 - `--fix-profile` / `-FixProfile`：仅在该开关下，脚本才补写 profile `pnpm-workspace.yaml` 的 `minimumReleaseAgeExclude`（幂等）并清理 profile `cordis.patch.yml` 里旧版写入的手动挂载；写入后回读断言，失败回滚并以非零码退出。不带该开关时这两个文件保持原样
 - `--restart` / `-Restart`：重启自托管 web 服务（按 pm2 进程名 `dsh-web`）；桌面版请在 App 的插件页操作
-
-> **提示**：两个脚本的试运行写法不同——bash 用 `--dry-run`（如 `bash scripts/install.sh --profile <profile> --dry-run`），PowerShell 用 `-DryRun`（如 `pwsh -File scripts/install.ps1 -Profile <profile> -DryRun`）。PowerShell 侧写 `--dry-run` 不生效。
-
-> **提示**：环境变量 `PATH` 里没有 `dsh` 命令时，脚本回退用 `npx` 拉起安装器：先打印将要执行的命令并要求确认，确认后才执行；设置环境变量 `DSH_INSTALL_YES=1` 可跳过确认。
-
-> **提示**：安装完成后脚本会读取 profile 的 `node_modules/.modules.yaml`，若记录了 `ignoredBuilds`（pnpm 拦截的依赖构建脚本），会打印可复制的豁免指引——把 `ignoredBuilds` 条目所在行原文整行作为 `pnpm-workspace.yaml` 中 `allowBuilds` 的键、值写 `true`；键必须与 lockfile 逐字一致，只写纯包名不生效。
-
-> **提示**：装好后**刷新一下浏览器页面**，右侧栏才会出现「SSH 隧道」入口——只重启宿主不够，客户端产物是页面加载时取的。
 
 **装完怎么用**
 
@@ -167,12 +157,6 @@ curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scrip
 | `grants.json` | `projectPathKey → hostIds[]` | `0600` |
 | `known_hosts.json` | 已信任的主机密钥指纹 | `0600` |
 
-## 界面国际化
-
-- 命名空间：`sshTunnel`；字典 `zh` / `en` 注册到 `ctx.locale`
-- Tab 标题与面板随 DSH 界面语言即时切换；切换语言会使插件面板重新挂载——终端与 SFTP 视图随之重建，远端会话本身不受影响
-- 宿主侧 `SSHManager` 的描述保持英文（面向模型）
-
 ## 开发
 
 ```sh
@@ -184,7 +168,7 @@ bash scripts/sync-to-dsh.sh --dry-run                    # 预览 link: 接入�
 node scripts/portal-probe.mjs       # 客户端 Tab 渲染探针（能解析到 react 时生效，否则明确跳过）
 ```
 
-目录与「改东西去哪」：
+项目目录：
 
 ```text
 lib/index.js            宿主入口：工具注册、/dsh-ssh-tunnel/api 路由、授权与路径守卫、xterm 资产下发
