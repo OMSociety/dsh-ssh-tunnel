@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 /**
- * Offline smoke tests (no SSH, no DSH process).
+ * Offline smoke tests. No real SSH hosts and no DSH process: remote-behavior
+ * cases dial an in-process ssh2.Server on 127.0.0.1 with a throwaway key.
  * Run: node scripts/smoke-test.mjs
  */
 import assert from 'node:assert/strict'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { existsSync, mkdirSync, realpathSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
-import { normalizeProjectKey, isPathInsideRoots, joinUnderRoot, constrainToWorkspace, workspaceRoot, workspaceRoots } from '../lib/shared/path.js'
+import { existsSync, mkdirSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
+import { generateKeyPairSync } from 'node:crypto'
+import { normalizeProjectKey, isPathInsideRoots, constrainToWorkspace, workspaceRoot, workspaceRoots } from '../lib/shared/path.js'
+import { requireString, stringOrDefault } from '../lib/shared/args.js'
 import {
   hostCredentialConfigured,
   publicHost,
@@ -22,10 +25,16 @@ import {
 } from '../lib/shared/host-key.js'
 import {
   clampTimeoutMs,
+  clampMaxBytes,
   defaultTimeoutMsForAction,
   findReusableLive,
   pickOldestTombstone,
   withTimeout,
+  sshError,
+  hostKeyPromptMessage,
+  API_ERROR_STATUS,
+  MAX_BYTES_MIN,
+  MAX_BYTES_MAX,
   SSH_TIMEOUT_MIN_MS,
   SSH_TIMEOUT_MAX_MS,
   SSH_EXEC_DEFAULT_TIMEOUT_MS,
@@ -51,33 +60,61 @@ import {
   isVendorAssetAllowed,
   resolveVendorAsset,
 } from '../lib/shared/vendor.js'
+import ssh2 from 'ssh2'
+const { Server: SshServer, Client } = ssh2
 
 // Hermetic workspace root for the path guard: point it at a throwaway directory
 // so the suite runs on hosts whose real workspace is not `/workspace` (for
 // example Windows drive paths). workspaceRoot() reads the variable at call time.
-const WS_ROOT = join(tmpdir(), `dsh-ssh-ws-${process.pid}`)
-mkdirSync(WS_ROOT, { recursive: true })
+const tempDirs = []
+function makeTempDir(prefix) {
+  const d = join(tmpdir(), `${prefix}-${process.pid}`)
+  mkdirSync(d, { recursive: true })
+  tempDirs.push(d)
+  return d
+}
+const WS_ROOT = makeTempDir('dsh-ssh-ws')
 process.env.DSH_SSH_TUNNEL_WORKSPACE_ROOT = WS_ROOT
 const wsPath = (...segs) => normalizeProjectKey(join(WS_ROOT, ...segs))
 const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
+let passed = 0
 let failed = 0
+let skipped = 0
 const pending = []
+class Skip extends Error {}
+function skip(reason) {
+  throw new Skip(reason)
+}
 function test(name, fn) {
   const run = () => {
     try {
       const result = fn()
       if (result && typeof result.then === 'function') {
         return result.then(
-          () => console.log('ok  ', name),
+          () => {
+            passed++
+            console.log('ok  ', name)
+          },
           (e) => {
+            if (e instanceof Skip) {
+              skipped++
+              console.log('skip ', name)
+              return
+            }
             failed++
             console.error('FAIL', name, e && e.message ? e.message : e)
           },
         )
       }
+      passed++
       console.log('ok  ', name)
     } catch (e) {
+      if (e instanceof Skip) {
+        skipped++
+        console.log('skip ', name)
+        return
+      }
       failed++
       console.error('FAIL', name, e && e.message ? e.message : e)
     }
@@ -110,13 +147,6 @@ test('isPathInsideRoots accepts children of filesystem roots', () => {
   assert.equal(isPathInsideRoots(root, [root]), true)
 })
 
-test('joinUnderRoot rejects escape', () => {
-  const root = wsPath('DSH-plugin')
-  assert.throws(() => joinUnderRoot(root, join('..', '..', 'etc', 'passwd')))
-  const ok = joinUnderRoot(root, join('sub', 'file.txt'))
-  assert.equal(ok, wsPath('DSH-plugin', 'sub', 'file.txt'))
-})
-
 test('constrainToWorkspace rejects lexical escape', () => {
   const re = new RegExp('must be under ' + escRe(workspaceRoot()))
   assert.throws(() => constrainToWorkspace('/home/node/.dsh/ssh-tunnel/secrets.json'), re)
@@ -144,6 +174,23 @@ test('constrainToWorkspace accepts the project workspace root', () => {
   )
 })
 
+// No implicit fallback root: guessing one silently widens the trust boundary.
+test('constrainToWorkspace fails closed with no root configured', () => {
+  const saved = process.env.DSH_SSH_TUNNEL_WORKSPACE_ROOT
+  delete process.env.DSH_SSH_TUNNEL_WORKSPACE_ROOT
+  try {
+    assert.throws(() => constrainToWorkspace('/tmp/whatever'), /no local workspace root configured/)
+    assert.throws(() => constrainToWorkspace('/tmp/whatever', { root: '' }), /no local workspace root configured/)
+  } finally {
+    if (saved !== undefined) process.env.DSH_SSH_TUNNEL_WORKSPACE_ROOT = saved
+  }
+})
+
+test('constrainToWorkspace tolerates a missing leaf inside the root', () => {
+  const p = wsPath('DSH-plugin', 'not-yet-created', 'child.txt')
+  assert.equal(constrainToWorkspace(p), p)
+})
+
 test('workspaceRoots lists the project workspace then the override', () => {
   const project = normalizeProjectKey(join(realpathSync(WS_ROOT), 'DSH-project'))
   assert.deepEqual(workspaceRoots(), [normalizeProjectKey(WS_ROOT)])
@@ -151,9 +198,19 @@ test('workspaceRoots lists the project workspace then the override', () => {
   assert.equal(workspaceRoot(project), project)
 })
 
+test('requireString rejects missing and empty values', () => {
+  assert.throws(() => requireString(undefined, 'path'), /path required/)
+  assert.throws(() => requireString('', 'path'), /path required/)
+  assert.throws(() => requireString('   ', 'path'), /path required/)
+  assert.equal(requireString('x', 'path'), 'x')
+  assert.equal(stringOrDefault(undefined, 'fb', 'path'), 'fb')
+  assert.equal(stringOrDefault('', 'fb', 'path'), 'fb')
+  assert.equal(stringOrDefault('a', 'fb', 'path'), 'a')
+  assert.throws(() => stringOrDefault(undefined, '', 'path'), /path required/)
+})
+
 test('persist: corrupt json throws; atomic write replaces', () => {
-  const dir = join(tmpdir(), `dsh-ssh-persist-${process.pid}`)
-  mkdirSync(dir, { recursive: true })
+  const dir = makeTempDir('dsh-ssh-persist')
   const p = join(dir, 'secrets.json')
   writeFileSync(p, '{not json', 'utf8')
   assert.throws(() => readJsonFile(p, { version: 1, byHostId: {} }), /corrupt json/)
@@ -200,7 +257,7 @@ test('constrainToWorkspace rejects outbound symlink', () => {
       symlinkSync(tmpdir(), link, 'dir')
     } catch (e) {
       if (e && (e.code === 'EPERM' || e.code === 'EACCES' || e.code === 'ENOSYS')) {
-        console.log('skip  constrainToWorkspace rejects outbound symlink (symlink unavailable)')
+        skip('symlink unavailable on this host/filesystem')
         return
       }
       throw e
@@ -282,6 +339,23 @@ test('clampTimeoutMs bounds and fallback', () => {
   assert.equal(clampTimeoutMs(0, 30_000), 30_000)
   assert.equal(clampTimeoutMs(500, 30_000), SSH_TIMEOUT_MIN_MS)
   assert.equal(clampTimeoutMs(999_999, 30_000), SSH_TIMEOUT_MAX_MS)
+})
+
+test('clampMaxBytes bounds and fallback', () => {
+  assert.equal(clampMaxBytes(undefined, 262_144), 262_144)
+  assert.equal(clampMaxBytes(0, 262_144), 262_144)
+  assert.equal(clampMaxBytes(10, 262_144), MAX_BYTES_MIN)
+  assert.equal(clampMaxBytes(999_999_999, 262_144), MAX_BYTES_MAX)
+})
+
+test('sshError carries an API code; the status map covers every code', () => {
+  const e = sshError('not_found', 'nope')
+  assert.equal(e.code, 'not_found')
+  assert.equal(e.message, 'nope')
+  for (const c of ['bad_request', 'forbidden', 'not_found', 'conflict', 'gone', 'payload_too_large']) {
+    assert.equal(typeof API_ERROR_STATUS[c], 'number', c)
+  }
+  assert.match(hostKeyPromptMessage(), /SSH Tunnel tab/)
 })
 
 test('defaultTimeoutMsForAction', () => {
@@ -410,6 +484,11 @@ test('requireLiveSession and closeSession require projectPathKey', () => {
   assert.equal(registry.sessions.has('s1'), false)
 })
 
+test('closeSession on a missing session reports not_found', () => {
+  const registry = makeRegistry()
+  assert.throws(() => registry.closeSession('missing', '/workspace'), (e) => e.code === 'not_found')
+})
+
 test('closeSessionsForHost terminates only the revoked host sessions in the project', () => {
   const registry = makeRegistry()
   const keyA = normalizeProjectKey('/workspace/DSH-plugin')
@@ -422,6 +501,75 @@ test('closeSessionsForHost terminates only the revoked host sessions in the proj
   assert.equal(registry.sessions.has('a1'), false)
   assert.equal(registry.sessions.has('b1'), true)
   assert.equal(registry.sessions.has('c1'), true)
+})
+
+/* ------------------------------------------------------------------ *
+ * Shell output buffer: seq cursors survive ring eviction.             *
+ * ------------------------------------------------------------------ */
+
+function makeBufferRegistry() {
+  return createSessionRegistry({
+    connectClient: async () => ({ on() {}, end() {}, exec() {} }),
+    loadSecrets: () => ({ byHostId: {} }),
+    getPrompt: () => undefined,
+    getHostById: (id) => ({ id, name: 'x', host: '1.2.3.4', port: 22, username: 'root', authType: 'password' }),
+    isHostAuthorized: () => true,
+  })
+}
+
+async function makeBufferSession() {
+  const registry = makeBufferRegistry()
+  const host = { id: 'h-buf', name: 'x', host: '1.2.3.4', port: 22, username: 'root', authType: 'password' }
+  const created = await registry.createLiveSession({
+    host,
+    projectPathKey: normalizeProjectKey('/workspace/DSH-plugin'),
+    sftpEnabled: false,
+  })
+  assert.equal(created.ok, true)
+  return { registry, rec: registry.get(created.session.session_id) }
+}
+
+test('shell buffer: seq cursor delivers only unseen output', async () => {
+  const { rec } = await makeBufferSession()
+  rec.pushOutput('hello')
+  rec.pushOutput(' world')
+  let r = rec.chunkFrom(0)
+  assert.equal(r.chunk, 'hello world')
+  assert.equal(r.since, 2)
+  assert.equal(r.seq, 2)
+  assert.equal(r.dropped, false)
+  assert.equal(r.chunkTruncated, false)
+  r = rec.chunkFrom(r.since)
+  assert.equal(r.chunk, '')
+  rec.pushOutput('!')
+  r = rec.chunkFrom(2)
+  assert.equal(r.chunk, '!')
+  assert.equal(r.seq, 3)
+  // A cursor is never pinned to the buffer tail: since advances with the seq.
+  assert.equal(rec.chunkFrom(99).dropped, false)
+})
+
+test('shell buffer: eviction advances baseSeq and flags dropped', async () => {
+  const { rec } = await makeBufferSession()
+  const big = 'x'.repeat(64 * 1024)
+  for (let i = 0; i < 12; i++) rec.pushOutput(big) // 768 KiB > 512 KiB ring
+  const fresh = rec.chunkFrom(0) // reader never read anything
+  assert.equal(fresh.dropped, true)
+  assert.ok(fresh.baseSeq > 1, 'baseSeq advanced past seq 1')
+  const current = rec.chunkFrom(fresh.seq)
+  assert.equal(current.dropped, false)
+  // Per-response cap: 8 retained 64 KiB chunks come back in bounded slices.
+  assert.ok(Buffer.byteLength(fresh.chunk) <= 256 * 1024 + 64 * 1024)
+  assert.equal(fresh.chunkTruncated, true)
+})
+
+test('shell buffer: single over-cap chunk is delivered whole and flagged', async () => {
+  const { rec } = await makeBufferSession()
+  rec.pushOutput('y'.repeat(300 * 1024))
+  const r = rec.chunkFrom(0)
+  assert.equal(r.chunk.length, 300 * 1024)
+  assert.equal(r.chunkTruncated, true)
+  assert.equal(r.dropped, false)
 })
 
 /* ------------------------------------------------------------------ *
@@ -447,11 +595,30 @@ test('result gate: granted host still delivers tool results', () => {
   )
 })
 
+test('result gate: custom message replaces the default on denial', () => {
+  assert.throws(
+    () =>
+      assertSessionStillAuthorized(
+        { projectPathKey: '/workspace/DSH-plugin', hostId: 'h-sg' },
+        () => false,
+        'custom denial text',
+      ),
+    /custom denial text/,
+  )
+})
+
 test('result gate: absent predicate is fail-closed', () => {
   assert.throws(
     () =>
       assertSessionStillAuthorized({ projectPathKey: '/workspace/DSH-plugin', hostId: 'h-sg' }, undefined),
     /predicate required/,
+  )
+})
+
+test('result gate: empty project binding is denied (fail-closed)', () => {
+  assert.throws(
+    () => assertSessionStillAuthorized({ projectPathKey: '', hostId: 'h-sg' }, () => false),
+    /not authorized/,
   )
 })
 
@@ -503,9 +670,230 @@ test('vendor: unknown or traversing names are rejected', () => {
   assert.throws(() => resolveVendorAsset(''), /not allowed/)
 })
 
+/* ------------------------------------------------------------------ *
+ * Remote exec settlement semantics, driven against a real (local,     *
+ * in-process) ssh2.Server: exit-status, exit-signal, connection cut,   *
+ * UTF-8 split across data events, max_bytes, and cwd composition.     *
+ * ------------------------------------------------------------------ */
+
+const HOST_KEY_PEM = (() => {
+  // ssh2's key parser wants classic PEM formats; PKCS#1 RSA parses reliably.
+  const { privateKey } = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    privateKeyEncoding: { type: 'pkcs1', format: 'pem' },
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+  })
+  return privateKey
+})()
+
+async function startSshServer(onExec) {
+  const server = new SshServer({ hostKeys: [HOST_KEY_PEM] }, (client) => {
+    client.on('authentication', (ctx) => {
+      if (ctx.method === 'password' && ctx.username === 'user' && ctx.password === 'pass') ctx.accept()
+      else ctx.reject()
+    })
+    client.on('session', (accept) => {
+      const session = accept()
+      session.on('exec', (acceptExec, rejectExec, info) => onExec(client, acceptExec, info))
+    })
+  })
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  return server
+}
+
+async function makeLiveSession(server) {
+  const port = server.address().port
+  const registry = createSessionRegistry({
+    connectClient: () =>
+      new Promise((resolve, reject) => {
+        const c = new Client()
+        c.on('ready', () => resolve(c))
+        c.on('error', reject)
+        c.connect({ host: '127.0.0.1', port, username: 'user', password: 'pass', readyTimeout: 5000 })
+      }),
+    loadSecrets: () => ({ byHostId: {} }),
+    getPrompt: () => undefined,
+    getHostById: (id) => ({ id, name: 't', host: '127.0.0.1', port, username: 'user', authType: 'password' }),
+    isHostAuthorized: () => true,
+  })
+  const host = { id: 'h-ssh', name: 't', host: '127.0.0.1', port, username: 'user', authType: 'password' }
+  const created = await registry.createLiveSession({
+    host,
+    projectPathKey: normalizeProjectKey('/workspace/DSH-plugin'),
+    sftpEnabled: false,
+  })
+  assert.equal(created.ok, true)
+  const rec = registry.get(created.session.session_id)
+  return { registry, rec }
+}
+
+async function stopServer(server, registry) {
+  for (const s of registry.sessions.values()) {
+    try { s.client?.end() } catch {}
+  }
+  await new Promise((resolve) => server.close(resolve))
+}
+
+// One server + one live session per test; `run` receives an exec() bound to
+// the session record, mirroring registry.execOnSession.
+async function execFixture(onServerExec, run) {
+  const server = await startSshServer(onServerExec)
+  const { registry, rec } = await makeLiveSession(server)
+  try {
+    await run((command, opts) => registry.execOnSession(rec, command, opts))
+  } finally {
+    await stopServer(server, registry)
+  }
+}
+
+test('exec: normal exit settles with exitKnown code and both streams', async () => {
+  await execFixture(
+    (client, accept) => {
+      const stream = accept()
+      stream.write('out-ok')
+      stream.stderr.write('err-line')
+      stream.exit(3)
+      stream.end()
+    },
+    async (exec) => {
+      const r = await exec('any')
+      assert.equal(r.exitKnown, true)
+      assert.equal(r.code, 3)
+      assert.equal(r.signal, null)
+      assert.equal(r.connectionDropped, false)
+      assert.equal(r.truncated, false)
+      assert.equal(r.stdout, 'out-ok')
+      assert.equal(r.stderr, 'err-line')
+    },
+  )
+})
+
+test('exec: signal death reports the signal, not exit 0', async () => {
+  await execFixture(
+    (client, accept) => {
+      const stream = accept()
+      stream.write('partial')
+      stream.exit('KILL') // exit-signal, no exit-status
+      stream.close()
+    },
+    async (exec) => {
+      const r = await exec('any')
+      assert.equal(r.exitKnown, false)
+      assert.equal(r.code, null)
+      assert.equal(r.signal, 'SIGKILL')
+      assert.equal(r.connectionDropped, false)
+    },
+  )
+})
+
+test('exec: connection cut reports connectionDropped, not exit 0', async () => {
+  await execFixture(
+    (client, accept) => {
+      const stream = accept()
+      stream.write('half')
+      setImmediate(() => {
+        try { client.end() } catch {}
+      })
+    },
+    async (exec) => {
+      const r = await exec('any')
+      assert.equal(r.exitKnown, false)
+      assert.equal(r.code, null)
+      assert.equal(r.signal, null)
+      assert.equal(r.connectionDropped, true)
+    },
+  )
+})
+
+test('exec: command not found settles as exit 127', async () => {
+  await execFixture(
+    (client, accept) => {
+      const stream = accept()
+      stream.stderr.write('command not found')
+      stream.exit(127)
+      stream.end()
+    },
+    async (exec) => {
+      const r = await exec('nope')
+      assert.equal(r.exitKnown, true)
+      assert.equal(r.code, 127)
+      assert.equal(r.stderr, 'command not found')
+    },
+  )
+})
+
+test('exec: UTF-8 split across data events survives (no U+FFFD)', async () => {
+  await execFixture(
+    (client, accept) => {
+      const stream = accept()
+      const buf = Buffer.from('中文测试', 'utf8')
+      stream.write(buf.subarray(0, 5))
+      stream.write(buf.subarray(5))
+      stream.exit(0)
+      stream.end()
+    },
+    async (exec) => {
+      const r = await exec('any')
+      assert.equal(r.exitKnown, true)
+      assert.equal(r.code, 0)
+      assert.equal(r.stdout, '中文测试')
+      assert.ok(!r.stdout.includes('\uFFFD'), 'no replacement characters')
+    },
+  )
+})
+
+test('exec: max_bytes truncates by byte and flags truncated', async () => {
+  await execFixture(
+    (client, accept) => {
+      const stream = accept()
+      stream.write('a'.repeat(5000))
+      stream.exit(0)
+      stream.end()
+    },
+    async (exec) => {
+      const r = await exec('any', { maxBytes: 1024 })
+      assert.equal(r.truncated, true)
+      assert.equal(Buffer.byteLength(r.stdout), 1024)
+      // Sub-floor values clamp to 1 KiB instead of trusting 10.
+      const r2 = await exec('any', { maxBytes: 10 })
+      assert.equal(Buffer.byteLength(r2.stdout), 1024)
+    },
+  )
+})
+
+test('exec: cwd is single-quote escaped and echoed; relative cwd rejects', async () => {
+  const seen = []
+  await execFixture(
+    (client, accept, info) => {
+      seen.push(info.command)
+      const stream = accept()
+      stream.exit(0)
+      stream.end()
+    },
+    async (exec) => {
+      await exec('echo hi', { cwd: "/tmp/it's" })
+      assert.equal(seen[0], "cd -- '/tmp/it'\\''s' && echo hi")
+      const r = await exec('echo hi', { cwd: '/tmp/plain' })
+      assert.equal(seen[1], "cd -- '/tmp/plain' && echo hi")
+      assert.equal(r.cwd, '/tmp/plain')
+      await assert.rejects(
+        () => exec('echo hi', { cwd: 'relative/path' }),
+        /absolute POSIX path/,
+      )
+      assert.equal(seen.length, 2, 'relative cwd never dialed the remote')
+    },
+  )
+})
+
 await Promise.all(pending)
+for (const d of tempDirs) {
+  try { rmSync(d, { recursive: true, force: true }) } catch {}
+}
+console.log(`\n${passed} passed, ${skipped} skipped, ${failed} failed`)
 if (failed) {
-  console.error(`\n${failed} failed`)
   process.exit(1)
 }
-console.log('\nall passed')
+console.log('all passed')

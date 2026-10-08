@@ -10,6 +10,48 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-10-08
+
+### 新增
+
+- **交互式输出读取采用 seq 游标协议。** 侧栏轮询接口 `shellRead` 的响应带 `chunk` / `since` / `seq` / `baseSeq` / `dropped` / `chunkTruncated`：客户端携带上次读到的 `since`，宿主返回其后的新增输出；环形缓冲（512 KiB）淘汰后 `baseSeq` 前移且 `dropped: true`，客户端据此全量重取，避免缓冲滚动造成输出缺口。单次响应的 `chunk` 上限 256 KiB。
+- **API 错误返回结构化错误码。** 错误响应体带 `code` 字段，并按语义映射 HTTP 状态：`bad_request` 400、`forbidden` 403、`not_found` 404、`conflict` 409、`gone` 410、`payload_too_large` 413；未映射的错误保持 500。
+- **主机密钥确认提示有时效与上限。** 待确认提示 5 分钟过期，至多保留 50 条（超出时淘汰最旧），按项目隔离。
+
+### 变更
+
+- **安装脚本以 `--profile` 为必填参数。** `scripts/install.sh` 与 `scripts/install.ps1`：目标 profile 必填且无默认值，缺失或不存在的 profile 报错并列出实存 profile（退出码 2）。`--fix-profile` / `-FixProfile` 为可选开关：仅在该开关下补写 profile `pnpm-workspace.yaml` 的 `minimumReleaseAgeExclude`（幂等）并清理 profile `cordis.patch.yml` 里旧版写入的手动挂载，写入后回读断言，失败回滚并以非零码退出。bash 试运行为 `--dry-run`，PowerShell 为 `-DryRun`。`PATH` 缺少 `dsh` 命令时的 `npx` 兜底先打印将执行的命令并要求确认（`DSH_INSTALL_YES=1` 跳过）。安装后读取 profile 的 `ignoredBuilds`，发现条目时打印 `allowBuilds` 豁免指引。`scripts/sync-to-dsh.sh` 支持 `--dry-run`。
+- **兼容区间按预发布线拆段。** `engines.dsh` 与 `@deepseek-ai/dsh-client-locale` peer 声明为 `>=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0`，0.1.7 线与 0.2 线各占一段。
+- **exec 结果如实结算。** 返回值带 `exitKnown` / `code` / `signal` / `connectionDropped`：正常退出 `exitKnown: true` 且 `code` 为退出码；按信号终止时 `signal` 为信号名；连接被切断时 `code` 为 `null` 且 `connectionDropped: true`。
+- **`max_bytes` 按字节钳制。** exec 与 `sftp_read_text` 的输出上限钳制在 1024–1048576 字节（默认 exec 262144、`sftp_read_text` 524288），输出按字节截断并在结果中置 `truncated: true`。
+- **客户端注入清单补齐到达顺序边。** `dsh.client.inject` 增加 `dsh-better-sidebar`；`exports` 放行 `./cordis.patch.yml`；`files` 放行 `scripts/lib/*.cjs`（安装脚本共享逻辑）。
+- **键盘交互式认证不支持。** 该类主机在连接、重连与 `SSHManager` 中被拒绝（`credential=unsupported`），提示改用密码或私钥。
+- **文档更新。** README 安装章节重构（桌面版走 App 插件页、CLI 形态限自建 web/headless profile、`--profile` 占位符、allowBuilds 处置）、安全章节改为客观口径（本机回环、无鉴权 token、本机进程视为已授权用户）、补 seq 游标协议与超时/上限声明、0700/0600 加 POSIX 平台限定。
+
+### 安全
+
+- **授权检查全程 fail-closed。** 建立连接前必须已有该项目授权；写类操作在发起前与结果回报前各复检一次；授权撤销即时生效——受影响的存活会话被关闭、在飞输出被丢弃并以 `not authorized` 失败、下载中的本地文件被删除。本地工作区根取不到时拒绝操作，可用环境变量 `DSH_SSH_TUNNEL_WORKSPACE_ROOT` 显式指定。
+
+### Added
+
+- **Interactive output is read through a seq cursor protocol.** The sidebar polling API `shellRead` returns `chunk` / `since` / `seq` / `baseSeq` / `dropped` / `chunkTruncated`: the client sends the last `since` it has seen and the host returns the newer output; ring-buffer eviction (512 KiB) moves `baseSeq` forward and sets `dropped: true`, telling the client to refetch in full, which prevents output gaps from buffer rollover. A single response caps `chunk` at 256 KiB.
+- **API errors carry structured codes.** Error response bodies include a `code` field mapped to HTTP statuses by meaning: `bad_request` 400, `forbidden` 403, `not_found` 404, `conflict` 409, `gone` 410, `payload_too_large` 413; unmapped errors stay 500.
+- **Host key confirmation prompts have a lifetime and a cap.** Pending prompts expire after 5 minutes, at most 50 are kept (oldest evicted beyond that), and they are isolated per project.
+
+### Changed
+
+- **The install scripts require `--profile`.** `scripts/install.sh` and `scripts/install.ps1`: the target profile is required with no default; a missing or nonexistent profile fails with a list of the profiles that do exist (exit code 2). `--fix-profile` / `-FixProfile` is an optional switch: only with it does the script add the plugin to the profile's `pnpm-workspace.yaml` (`minimumReleaseAgeExclude`, idempotent) and remove the hand-written mount older versions put into the profile's `cordis.patch.yml`; writes are read back and asserted, and a failure rolls the change back and exits non-zero. The bash dry-run flag is `--dry-run`, the PowerShell one is `-DryRun`. When `dsh` is missing from `PATH`, the `npx` fallback prints the command it is about to execute and asks for confirmation (`DSH_INSTALL_YES=1` skips it). After installing, the script reads the profile's `ignoredBuilds` and prints an `allowBuilds` exemption recipe when entries are found. `scripts/sync-to-dsh.sh` supports `--dry-run`.
+- **The compatibility range is split per prerelease line.** `engines.dsh` and the `@deepseek-ai/dsh-client-locale` peer declare `>=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0` — the 0.1.7 line and the 0.2 line each get their own segment.
+- **exec results are settled faithfully.** Results carry `exitKnown` / `code` / `signal` / `connectionDropped`: a normal exit sets `exitKnown: true` with the exit code in `code`; a signal death returns the signal name in `signal`; a cut connection returns `code: null` with `connectionDropped: true`.
+- **`max_bytes` is clamped in bytes.** The output cap for exec and `sftp_read_text` is clamped to 1024–1048576 bytes (defaults: 262144 for exec, 524288 for `sftp_read_text`); output is truncated on byte boundaries and the result sets `truncated: true`.
+- **The client inject list completes the arrival-order edge.** `dsh.client.inject` adds `dsh-better-sidebar`; `exports` admits `./cordis.patch.yml`; `files` admits `scripts/lib/*.cjs` (installer shared logic).
+- **keyboard-interactive auth is not supported.** Such hosts are refused on connect, reconnect and in `SSHManager` (`credential=unsupported`) with a message to switch to password or private key.
+- **Documentation updates.** The README install section is restructured (desktop installs go through the app plugin page, CLI forms target self-hosted web/headless profiles, `<profile>` placeholders, allowBuilds handling), the security section states the trust boundary objectively (local loopback, no authentication token, local processes treated as authorized users), the seq cursor protocol and timeout/limit declarations are added, and the 0700/0600 statements carry a POSIX platform qualifier.
+
+### Security
+
+- **Authorization checks fail closed end to end.** Connecting requires an existing project grant; write operations re-check the grant once before being issued and once before the result is delivered; a revocation takes effect immediately — affected live sessions are closed, in-flight output is discarded and the call fails with `not authorized`, and a local file mid-download is deleted. Operations are refused when no local workspace root can be resolved; the environment variable `DSH_SSH_TUNNEL_WORKSPACE_ROOT` can set one explicitly.
+
 ## [1.0.1] - 2026-10-04
 
 ### 新增
@@ -317,3 +359,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial permanent plugin scaffold
+
+[1.0.2]: https://github.com/OMSociety/dsh-ssh-tunnel/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/OMSociety/dsh-ssh-tunnel/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/OMSociety/dsh-ssh-tunnel/compare/v0.4.6...v1.0.0
+[0.4.6]: https://github.com/OMSociety/dsh-ssh-tunnel/compare/v0.4.5...v0.4.6
+[0.4.5]: https://github.com/OMSociety/dsh-ssh-tunnel/compare/v0.4.3...v0.4.5
+[0.4.3]: https://github.com/OMSociety/dsh-ssh-tunnel/compare/v0.4.2...v0.4.3
+[0.4.2]: https://github.com/OMSociety/dsh-ssh-tunnel/compare/v0.4.1...v0.4.2
+[0.4.1]: https://github.com/OMSociety/dsh-ssh-tunnel/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/OMSociety/dsh-ssh-tunnel/compare/v0.3.11...v0.4.0
+[0.3.11]: https://github.com/OMSociety/dsh-ssh-tunnel/compare/v0.3.7...v0.3.11
+[0.3.7]: https://github.com/OMSociety/dsh-ssh-tunnel/tree/v0.3.7

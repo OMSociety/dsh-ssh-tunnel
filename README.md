@@ -8,7 +8,7 @@
 
   <p>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/releases"><img src="https://img.shields.io/github/v/tag/OMSociety/dsh-ssh-tunnel?label=version&color=4f6ef7" alt="Version"></a>
-    <a href="https://github.com/deepseek-ai/dsh"><img src="https://img.shields.io/badge/DSH-%3E%3D0.1.7--rc.2_%3C0.3.0--0-4f6ef7" alt="DSH"></a>
+    <img src="https://img.shields.io/badge/DSH-%3E%3D0.1.7--rc.2%20%3C0.2.0--0%20%7C%7C%20%3E%3D0.2.0--rc.1%20%3C0.3.0--0-4f6ef7" alt="DSH">
     <a href="LICENSE"><img src="https://img.shields.io/github/license/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="License"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/stargazers"><img src="https://img.shields.io/github/stars/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Stars"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/issues"><img src="https://img.shields.io/github/issues/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Issues"></a>
@@ -19,7 +19,7 @@
 
 ## 这是什么
 
-**DSH SSH Tunnel** 是 [DeepSeek Harness](https://github.com/deepseek-ai/dsh) 的社区插件，挂在右侧栏宿主 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 上：把多台 SSH 主机收进一个**主机库**，按项目授权，然后在中央面板里开**交互式终端**（xterm）或**双栏 SFTP**。
+**DSH SSH Tunnel** 是 DeepSeek Harness 的社区插件，挂在右侧栏宿主 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 上：把多台 SSH 主机收进一个**主机库**，按项目授权，然后在中央面板里开**交互式终端**（xterm）或**双栏 SFTP**。
 
 它**不会**把全局 `fs` / `subprocess` 换成一个远程盘：远端操作只发生在你显式调用的 `SSHManager` 工具与面板里，本地文件与远端文件始终是两侧分明的东西。
 
@@ -46,35 +46,60 @@
 
 ## 快速开始
 
-**方式一：从 npm 安装（推荐）**
+**桌面版（推荐路径）**
 
-```powershell
-# 1) 先停掉 dsh web（运行中的服务会锁住依赖，装完再起）
-dsh plugin --profile web add "dsh-ssh-tunnel@1.0.1"
-# 2) 重新启动 dsh web
+DeepSeek Harness 桌面版的插件由 App 统一管理：在 App 的**插件页**安装并升级本插件即可。桌面 profile 目录由 App 独占管理，请不要对它运行下面的 CLI 命令或安装脚本。
+
+**CLI 安装（仅限自建 web / headless profile）**
+
+以下三种方式只针对自建的 web / headless profile。`<profile>` 处填你自己的 profile 名。
+
+方式一：从 npm 安装
+
+```sh
+dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.0.2"
 ```
 
-包已发布到 npm，随包提供预构建产物，本地不需要构建步骤；换版本就把 `@1.0.1` 换成目标版本。
+包已发布到 npm，随包提供预构建产物，本地不需要构建步骤；换版本就把 `@1.0.2` 换成目标版本。
 
-**方式二：从 GitHub 源安装**
+方式二：从 GitHub 源安装
 
-```powershell
-dsh plugin --profile web add "github:OMSociety/dsh-ssh-tunnel"
+```sh
+dsh plugin --profile <profile> add "github:OMSociety/dsh-ssh-tunnel"
 ```
 
 想复现某次安装就钉住 ref：在仓库地址后加 `#<tag 或提交 sha>`。
 
-**方式三：一键脚本**
+方式三：一键脚本
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.sh | bash -s -- --profile <profile>
 ```
 
 ```powershell
-irm https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.ps1 | iex
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.ps1))) -Profile <profile>
 ```
 
-脚本默认走 GitHub 源（`bash scripts/install.sh --from npm 1.0.1` 可切到 npm），除安装外还会把 profile 的 `minimumReleaseAgeExclude` 补上本插件、校验 `dsh.profile.bundles` 确实写入、清掉旧版手写在 profile `cordis.patch.yml` 里的挂载（先加 `--dry-run` 可只看计划不动手）。
+脚本参数（bash 与 PowerShell 一一对应）：
+
+| 说明 | bash | PowerShell |
+|---|---|---|
+| 安装版本（可选，缺省装最新发布版） | `[版本]`（首个位置参数） | `-Version <版本>` |
+| **目标 profile（必填，无默认值）** | `--profile <名称>` | `-Profile <名称>` |
+| 安装源（默认 `github`） | `--from github\|npm` | `-From github\|npm` |
+| 修 profile（可选开关） | `--fix-profile` | `-FixProfile` |
+| 重启 web（可选开关） | `--restart` | `-Restart` |
+| 试运行（可选开关） | `--dry-run` | `-DryRun` |
+
+- profile 缺失或不存在时脚本报错并列出实存 profile，退出码 2
+- `--fix-profile` / `-FixProfile`：仅在该开关下，脚本才补写 profile `pnpm-workspace.yaml` 的 `minimumReleaseAgeExclude`（幂等）并清理 profile `cordis.patch.yml` 里旧版写入的手动挂载；写入后回读断言，失败回滚并以非零码退出。不带该开关时这两个文件保持原样
+- `--restart` / `-Restart`：重启自托管 web 服务（按 pm2 进程名 `dsh-web`）；桌面版请在 App 的插件页操作
+
+> **提示**：两个脚本的试运行写法不同——bash 用 `--dry-run`（如 `bash scripts/install.sh --profile <profile> --dry-run`），PowerShell 用 `-DryRun`（如 `pwsh -File scripts/install.ps1 -Profile <profile> -DryRun`）。PowerShell 侧写 `--dry-run` 不生效。
+
+> **提示**：环境变量 `PATH` 里没有 `dsh` 命令时，脚本回退用 `npx` 拉起安装器：先打印将要执行的命令并要求确认，确认后才执行；设置环境变量 `DSH_INSTALL_YES=1` 可跳过确认。
+
+> **提示**：安装完成后脚本会读取 profile 的 `node_modules/.modules.yaml`，若记录了 `ignoredBuilds`（pnpm 拦截的依赖构建脚本），会打印可复制的豁免指引——把 `ignoredBuilds` 条目所在行原文整行作为 `pnpm-workspace.yaml` 中 `allowBuilds` 的键、值写 `true`；键必须与 lockfile 逐字一致，只写纯包名不生效。
 
 > **提示**：装好后**刷新一下浏览器页面**，右侧栏才会出现「SSH 隧道」入口——只重启宿主不够，客户端产物是页面加载时取的。
 
@@ -111,42 +136,51 @@ irm https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/inst
 | `read_session` / `send_input` / `resize_session` | 交互式会话的读取、输入与窗口尺寸 |
 
 - 会话策略：`reuse_or_create`（默认，会复活同主机已断开的会话）、`new`、`require_existing`，或显式传 `session_id`
-- `timeout_ms` 取值 1000–300000，作用于 exec / SFTP / shell；默认 exec 与 SFTP 元数据 30s，SFTP 传输 120s
+- 超时：默认 exec 30s、SFTP 元数据 30s、SFTP 传输 120s、shell 类操作（`read_session` / `send_input` / `resize_session`）10s；`timeout_ms` 可覆盖，取值钳制在 1000–300000，整次调用另有 300s 上限
+- `max_bytes`：exec 与 `sftp_read_text` 的单次输出上限，按字节钳制在 1024–1048576（默认 exec 262144 即 256 KiB、`sftp_read_text` 524288 即 512 KiB）；达到上限时结果带 `truncated: true` 且只含前 `max_bytes` 字节
+- exec 结算：结果带 `exitKnown` / `code` / `signal` / `connectionDropped`——正常退出 `exitKnown: true` 且 `code` 为退出码；按信号终止时返回 `signal`；连接被切断时 `code` 为 `null` 且 `connectionDropped: true`
+- 交互式输出的读取走 seq 游标协议（侧栏轮询的 `shellRead`）：客户端携带上次读到的 `since`，响应返回 `chunk` / `since` / `seq` / `baseSeq` / `dropped` / `chunkTruncated`；环形缓冲（512 KiB）淘汰后 `baseSeq` 前移且 `dropped: true`，客户端据此全量重取；单次响应的 `chunk` 上限 256 KiB
 - 认证方式只有**密码**或**私钥**；键盘交互式认证（含堡垒机网页 MFA）不支持
 
 ## 安全
 
+**信任边界（客观陈述）**：插件的 HTTP API 挂在 DSH 宿主的本地 web 服务上，只接受本机回环（`localhost` / `127.0.0.1` / `::1`）与配置的可信主机，并校验浏览器 `Origin`；API 没有鉴权 token——**能在本机访问该端口的进程都被视为已授权用户**，可以使用本插件的能力。会话 API 必须带 `projectPathKey`，跨项目不可见。
+
+授权与路径守卫动作清单：
+
+- **连接必须先授权**：未在「项目授权」里勾选的主机无法建立连接，Connect 不会自动写入授权
+- **授权撤销即时生效**：写类操作在发起前与结果回报前各复检一次授权；撤销后输出被丢弃并以 `not authorized` 失败，下载中的本地文件被删除，受影响的存活会话被关闭，重连拒绝复活已撤销主机
+- **本地路径守卫 fail-closed**：上传 / 下载 / 列举 / 建目录 / 删除 / 重命名的本机路径限制在**项目工作区根**内，词法 **与** realpath 双重校验，越界路径与指向工作区外的符号链接一律拒绝；工作区根取不到时直接拒绝操作（可用环境变量 `DSH_SSH_TUNNEL_WORKSPACE_ROOT` 显式指定）
 - 工具结果与列表 API 不返回 password / PEM / 口令
-- 本地上传、下载、列举、删除的路径限制在**项目工作区根**内（由宿主按当前会话工作区解析，不假设固定挂载点）：词法 **与** realpath 双重校验，越界路径与指向工作区外的符号链接一律拒绝
 - 主机密钥以 **SHA256 hex** 存入 `known_hosts.json`；首次连接或指纹变更时在侧栏确认（展示指纹）
-- HTTP API 限制在 loopback / trusted hosts；浏览器 `Origin` 必须匹配；会话 API 必须带 `projectPathKey`
 - 优先使用密钥登录；若 `secrets.json` 可能泄露请立即轮换凭据
-- 键盘交互式认证已下线：请把这类主机改为密码或私钥
+- 认证方式为密码或私钥
 
 ## 数据放在哪
 
-`$DSH_HOME/ssh-tunnel/`（目录 `0700`）：
+`$DSH_HOME/ssh-tunnel/`（目录权限 `0700`；此为 POSIX 系统行为——Windows 的 NTFS 权限由继承 ACL 决定，`chmod` 不改 DACL）：
 
-| 文件 | 内容 |
-|---|---|
-| `hosts.json` | 主机元数据（不含密钥明文） |
-| `secrets.json` | 密码 / PEM / 口令（`0600`） |
-| `grants.json` | `projectPathKey → hostIds[]` |
-| `known_hosts.json` | 已信任的主机密钥指纹 |
+| 文件 | 内容 | 权限（POSIX） |
+|---|---|---|
+| `hosts.json` | 主机元数据（不含密钥明文） | `0600` |
+| `secrets.json` | 密码 / PEM / 口令 | `0600` |
+| `grants.json` | `projectPathKey → hostIds[]` | `0600` |
+| `known_hosts.json` | 已信任的主机密钥指纹 | `0600` |
 
 ## 界面国际化
 
 - 命名空间：`sshTunnel`；字典 `zh` / `en` 注册到 `ctx.locale`
-- Tab 标题与面板随 DSH 界面语言即时切换
+- Tab 标题与面板随 DSH 界面语言即时切换；切换语言会使插件面板重新挂载——终端与 SFTP 视图随之重建，远端会话本身不受影响
 - 宿主侧 `SSHManager` 的描述保持英文（面向模型）
 
 ## 开发
 
-```powershell
-npm test                   # node --test：自检脚本全量回归
-npm run check              # 语法 + 自检
-bash scripts/sync-to-dsh.sh   # 以 link: 方式把本仓库接入 web profile（开发用）
-bash scripts/install.sh --dry-run   # 只看安装计划，不动 profile
+```sh
+npm test                            # 自检脚本全量回归（实际执行 node scripts/smoke-test.mjs）
+npm run check                       # 语法检查 + 自检
+node scripts/smoke-test.mjs         # 直接运行自检（离线设计，不起 SSH、不起 DSH 进程）
+bash scripts/install.sh --profile <profile> --dry-run   # 只看安装计划，不动 profile
+bash scripts/sync-to-dsh.sh --dry-run                    # 预览 link: 接入命令；去掉 --dry-run 才会改写 profile
 node scripts/portal-probe.mjs       # 客户端 Tab 渲染探针（能解析到 react 时生效，否则明确跳过）
 ```
 
@@ -155,10 +189,11 @@ node scripts/portal-probe.mjs       # 客户端 Tab 渲染探针（能解析到 
 ```text
 lib/index.js            宿主入口：工具注册、/dsh-ssh-tunnel/api 路由、授权与路径守卫、xterm 资产下发
 lib/client.js           客户端 bundle（已入库；dsh plugin add 不做构建）
-lib/session.js          会话生命周期：连接、keepalive、掉线墓碑与自动重连
-lib/shared/             宿主与客户端共用纯函数：path / host-key / host-summary / http-trust / persist /
+lib/session.js          会话生命周期：连接、keepalive、掉线墓碑与自动重连、exec/SFTP 执行
+lib/shared/             宿主与客户端共用纯函数：path / args / host-key / host-summary / http-trust / persist /
                         session-auth / session-policy / shell-buffer / vendor
 scripts/                install.sh · install.ps1 · sync-to-dsh.sh · smoke-test.mjs · portal-probe.mjs
+scripts/lib/            安装链共享逻辑（.cjs，install.sh 与 install.ps1 共用）
 cordis.patch.yml        包内 bundle patch，CLI 据此写入 dsh.profile.bundles
 ```
 
@@ -170,11 +205,11 @@ cordis.patch.yml        包内 bundle patch，CLI 据此写入 dsh.profile.bundl
 
 - 如果这个插件对你有帮助，欢迎点亮 Star；有问题或建议请提 [Issue](https://github.com/OMSociety/dsh-ssh-tunnel/issues) 或 [Pull Request](https://github.com/OMSociety/dsh-ssh-tunnel/pulls)。
 - 变更记录见 [CHANGELOG](CHANGELOG.md)。
-- [LiveAgent](https://github.com/thirsty5034/LiveAgent)：产品形态与部分 UX 的参考来源（见上文「参考来源」）
+- LiveAgent（[thirsty5034/LiveAgent](https://github.com/thirsty5034/LiveAgent)）：产品形态与部分 UX 的参考来源（见上文「参考来源」）
 - [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)：右侧栏宿主与 Tab 契约
 - [dsh-git-forge](https://github.com/OMSociety/dsh-git-forge)：同门插件，Git 凭据与 push 策略
-- [DeepSeek Harness](https://github.com/deepseek-ai/dsh)：插件、工具与 agent shell 的宿主
+- DeepSeek Harness：插件、工具与 agent shell 的宿主
 
 ## 许可证与作者
 
-[MIT](LICENSE)。上游项目与代码作者 [@thirsty5034](https://github.com/thirsty5034)；本仓库的维护与新增部分 © 2026 [@OMSociety](https://github.com/OMSociety)。
+[MIT](LICENSE)。授权条款与版权归属以 LICENSE 为准；上游项目与代码作者 [@thirsty5034](https://github.com/thirsty5034)。

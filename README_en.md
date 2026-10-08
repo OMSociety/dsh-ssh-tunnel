@@ -8,7 +8,7 @@
 
   <p>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/releases"><img src="https://img.shields.io/github/v/tag/OMSociety/dsh-ssh-tunnel?label=version&color=4f6ef7" alt="Version"></a>
-    <a href="https://github.com/deepseek-ai/dsh"><img src="https://img.shields.io/badge/DSH-%3E%3D0.1.7--rc.2_%3C0.3.0--0-4f6ef7" alt="DSH"></a>
+    <img src="https://img.shields.io/badge/DSH-%3E%3D0.1.7--rc.2%20%3C0.2.0--0%20%7C%7C%20%3E%3D0.2.0--rc.1%20%3C0.3.0--0-4f6ef7" alt="DSH">
     <a href="LICENSE"><img src="https://img.shields.io/github/license/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="License"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/stargazers"><img src="https://img.shields.io/github/stars/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Stars"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/issues"><img src="https://img.shields.io/github/issues/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Issues"></a>
@@ -17,7 +17,7 @@
 
 ## What this is
 
-**DSH SSH Tunnel** is a community plugin for [DeepSeek Harness](https://github.com/deepseek-ai/dsh), mounted in the sidebar host [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar). It collects your SSH hosts into one **host inventory**, authorizes them per project, and then opens an **interactive terminal** (xterm) or **dual-pane SFTP** in the center panel.
+**DSH SSH Tunnel** is a community plugin for DeepSeek Harness, mounted in the sidebar host [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar). It collects your SSH hosts into one **host inventory**, authorizes them per project, and then opens an **interactive terminal** (xterm) or **dual-pane SFTP** in the center panel.
 
 It does **not** replace the global `fs` / `subprocess` with a remote disk: remote operations happen only in the `SSHManager` tool you call explicitly and inside the panel, and local and remote files remain two clearly separated sides.
 
@@ -44,35 +44,60 @@ This package is a **DSH-native implementation** (Cordis host/client plugin, `dsh
 
 ## Quick start
 
-**Option 1: install from npm (recommended)**
+**Desktop app (recommended path)**
 
-```powershell
-# 1) stop dsh web first (a running server holds the dependency lock; start it again afterwards)
-dsh plugin --profile web add "dsh-ssh-tunnel@1.0.1"
-# 2) restart dsh web
+The DeepSeek Harness desktop app manages plugins itself: install and upgrade this plugin from the app's **plugin page**. The desktop profile directory is owned exclusively by the app — do not run the CLI commands or install scripts below against it.
+
+**CLI install (self-hosted web / headless profiles only)**
+
+The three options below apply only to self-hosted web / headless profiles. Replace `<profile>` with your profile name.
+
+Option 1: install from npm
+
+```sh
+dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.0.2"
 ```
 
-The package is published to npm and ships the prebuilt artifacts, so no local build step is involved. Replace `@1.0.1` to install another version.
+The package is published to npm and ships the prebuilt artifacts, so no local build step is involved. Replace `@1.0.2` to install another version.
 
-**Option 2: install from the GitHub source**
+Option 2: install from the GitHub source
 
-```powershell
-dsh plugin --profile web add "github:OMSociety/dsh-ssh-tunnel"
+```sh
+dsh plugin --profile <profile> add "github:OMSociety/dsh-ssh-tunnel"
 ```
 
 To reproduce a specific install, pin a ref by appending `#<tag or commit sha>` to the repository URL.
 
-**Option 3: one-line installer**
+Option 3: one-line installer
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.sh | bash -s -- --profile <profile>
 ```
 
 ```powershell
-irm https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.ps1 | iex
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.ps1))) -Profile <profile>
 ```
 
-The script installs from the GitHub source by default (`bash scripts/install.sh --from npm 1.0.1` switches to npm). Besides installing, it adds this plugin to the profile's `minimumReleaseAgeExclude`, verifies that `dsh.profile.bundles` really received the entry, and removes the mount older versions wrote by hand into the profile's `cordis.patch.yml`. Add `--dry-run` to print the plan without touching anything.
+Installer parameters (bash and PowerShell map one to one):
+
+| Purpose | bash | PowerShell |
+|---|---|---|
+| Version to install (optional; latest release by default) | `[version]` (first positional argument) | `-Version <version>` |
+| **Target profile (required, no default)** | `--profile <name>` | `-Profile <name>` |
+| Install source (default `github`) | `--from github\|npm` | `-From github\|npm` |
+| Profile fix (optional switch) | `--fix-profile` | `-FixProfile` |
+| Restart web (optional switch) | `--restart` | `-Restart` |
+| Dry run (optional switch) | `--dry-run` | `-DryRun` |
+
+- A missing or nonexistent profile fails the script with a list of the profiles that do exist, exit code 2
+- `--fix-profile` / `-FixProfile`: only with this switch does the script add the plugin to the profile's `pnpm-workspace.yaml` (`minimumReleaseAgeExclude`, idempotent) and remove the hand-written mount older versions put into the profile's `cordis.patch.yml`; writes are read back and asserted, and a failure rolls the change back and exits non-zero. Without the switch both files stay untouched
+- `--restart` / `-Restart`: restarts a self-hosted web service (pm2 process name `dsh-web`); on the desktop app use its plugin page instead
+
+> **Note**: The dry-run flag differs between the two scripts — bash takes `--dry-run` (for example `bash scripts/install.sh --profile <profile> --dry-run`), PowerShell takes `-DryRun` (for example `pwsh -File scripts/install.ps1 -Profile <profile> -DryRun`). `--dry-run` has no effect on the PowerShell side.
+
+> **Note**: When no `dsh` command is on `PATH`, the script falls back to `npx` to run the installer: it prints the command it is about to execute and asks for confirmation first; set the environment variable `DSH_INSTALL_YES=1` to skip the prompt.
+
+> **Note**: After installing, the script reads the profile's `node_modules/.modules.yaml`; if it records `ignoredBuilds` (dependency build scripts blocked by pnpm), it prints a copy-paste exemption recipe — use the whole `ignoredBuilds` entry line verbatim as the key in `allowBuilds` inside `pnpm-workspace.yaml` with the value `true`. The key must match the lockfile literally; a bare package name does not work.
 
 > **Note**: After installing, **refresh the browser page** for the "SSH Tunnel" entry to appear in the sidebar — restarting the host alone is not enough, because the client artifact is fetched when the page loads.
 
@@ -109,42 +134,51 @@ One sidebar tab with three pages:
 | `read_session` / `send_input` / `resize_session` | Read, feed and resize an interactive session |
 
 - Session strategies: `reuse_or_create` (default; revives a disconnected session for that host), `new`, `require_existing`, or an explicit `session_id`
-- `timeout_ms` ranges from 1000 to 300000 and applies to exec / SFTP / shell; defaults are 30s for exec and SFTP metadata, 120s for SFTP transfers
+- Timeouts: exec 30s, SFTP metadata 30s, SFTP transfers 120s, shell operations (`read_session` / `send_input` / `resize_session`) 10s by default; `timeout_ms` overrides them, clamped to 1000–300000, with a 300s ceiling for the whole call
+- `max_bytes`: per-call output cap for exec and `sftp_read_text`, clamped to 1024–1048576 bytes (defaults: 262144 = 256 KiB for exec, 524288 = 512 KiB for `sftp_read_text`); when the cap is hit the result sets `truncated: true` and carries only the first `max_bytes` bytes
+- exec settlement: results carry `exitKnown` / `code` / `signal` / `connectionDropped` — a normal exit sets `exitKnown: true` with the exit code in `code`; a signal death returns `signal`; a cut connection returns `code: null` with `connectionDropped: true`
+- Interactive output is read through a seq cursor protocol (the sidebar polling API `shellRead`): the client sends the last `since` it has seen, and the response returns `chunk` / `since` / `seq` / `baseSeq` / `dropped` / `chunkTruncated`; ring-buffer eviction (512 KiB) moves `baseSeq` forward and sets `dropped: true`, telling the client to refetch in full; a single response caps `chunk` at 256 KiB
 - Authentication is **password** or **private key** only; keyboard-interactive (including bastion web MFA) is not supported
 
 ## Security
 
+**Trust boundary (stated as it is)**: the plugin's HTTP API is served by the DSH host's local web server and only accepts loopback (`localhost` / `127.0.0.1` / `::1`) plus configured trusted hosts, with the browser `Origin` checked; the API has no authentication token — **any local process that can reach the port is treated as an authorized user** and may use the plugin's capabilities. Session APIs require `projectPathKey` and are invisible across projects.
+
+Authorization and path-guard action list:
+
+- **Grant before connect**: a host that is not checked under Project access cannot be connected, and Connect never auto-writes grants
+- **Revocation takes effect immediately**: write operations re-check the grant once before being issued and once before the result is delivered; after a revocation the output is discarded and the call fails with `not authorized`, a local file mid-download is deleted, affected live sessions are closed, and reconnect refuses to resurrect the revoked host
+- **Local path guard fails closed**: local upload / download / list / mkdir / delete / rename paths are constrained to the **project workspace root**, with both lexical and realpath checks, and out-of-bounds paths or symlinks pointing outside the workspace are rejected; when no workspace root can be resolved the operation is refused (the environment variable `DSH_SSH_TUNNEL_WORKSPACE_ROOT` can set one explicitly)
 - Tool results and list APIs never return password / PEM / passphrase
-- Local upload, download, list and delete paths are constrained to the **project workspace root** (the host resolves it from the current session workspace rather than assuming a fixed mount point): both lexical and realpath checks apply, and out-of-bounds paths or symlinks pointing outside the workspace are rejected
 - Host keys are stored as **SHA256 hex** in `known_hosts.json`; the first connect or a fingerprint change is confirmed in the sidebar with the fingerprint shown
-- The HTTP API is fenced to loopback / trusted hosts; the browser `Origin` must match; session APIs require `projectPathKey`
 - Prefer key-based auth; rotate credentials immediately if `secrets.json` may have leaked
-- keyboard-interactive is retired: edit such hosts to password or private key
+- Authentication is password or private key
 
 ## Where data lives
 
-Under `$DSH_HOME/ssh-tunnel/` (directory mode `0700`):
+Under `$DSH_HOME/ssh-tunnel/` (directory mode `0700`; this is POSIX behavior — on Windows NTFS permissions come from inherited ACLs and `chmod` does not change the DACL):
 
-| File | Contents |
-|---|---|
-| `hosts.json` | Host metadata (no secret material) |
-| `secrets.json` | Passwords / PEM / passphrases (`0600`) |
-| `grants.json` | `projectPathKey → hostIds[]` |
-| `known_hosts.json` | Trusted host key fingerprints |
+| File | Contents | Mode (POSIX) |
+|---|---|---|
+| `hosts.json` | Host metadata (no secret material) | `0600` |
+| `secrets.json` | Passwords / PEM / passphrases | `0600` |
+| `grants.json` | `projectPathKey → hostIds[]` | `0600` |
+| `known_hosts.json` | Trusted host key fingerprints | `0600` |
 
 ## UI internationalization
 
 - Namespace: `sshTunnel`; dictionaries `zh` / `en` registered on `ctx.locale`
-- Tab title and panel follow the DSH interface language live
+- Tab title and panel follow the DSH interface language live; switching the language remounts the plugin panel — the terminal and SFTP views are rebuilt, while the remote session itself is unaffected
 - Host-side `SSHManager` strings stay English (model-facing)
 
 ## Development
 
-```powershell
-npm test                   # node --test: full regression of the smoke scripts
-npm run check              # syntax + smoke tests
-bash scripts/sync-to-dsh.sh   # register this checkout into the web profile as link: (dev)
-bash scripts/install.sh --dry-run   # print the install plan without touching the profile
+```sh
+npm test                            # full regression of the smoke scripts (runs node scripts/smoke-test.mjs)
+npm run check                       # syntax check + smoke tests
+node scripts/smoke-test.mjs         # run the smoke scripts directly (offline by design: no SSH, no DSH process)
+bash scripts/install.sh --profile <profile> --dry-run   # print the install plan without touching the profile
+bash scripts/sync-to-dsh.sh --dry-run                    # preview the link: registration; drop --dry-run to actually rewrite the profile
 node scripts/portal-probe.mjs       # client tab render probe (runs when react resolves, otherwise skips)
 ```
 
@@ -153,10 +187,11 @@ Layout and where to change what:
 ```text
 lib/index.js            Host entry: tool registration, /dsh-ssh-tunnel/api routes, grants and path guard, xterm asset serving
 lib/client.js           Client bundle (committed; dsh plugin add does not build)
-lib/session.js          Session lifecycle: connect, keepalive, drop tombstones and auto-reconnect
-lib/shared/             Pure functions shared by host and client: path / host-key / host-summary / http-trust / persist /
+lib/session.js          Session lifecycle: connect, keepalive, drop tombstones and auto-reconnect, exec/SFTP execution
+lib/shared/             Pure functions shared by host and client: path / args / host-key / host-summary / http-trust / persist /
                         session-auth / session-policy / shell-buffer / vendor
 scripts/                install.sh · install.ps1 · sync-to-dsh.sh · smoke-test.mjs · portal-probe.mjs
+scripts/lib/            Installer shared logic (.cjs, used by both install.sh and install.ps1)
 cordis.patch.yml        In-package bundle patch the CLI turns into dsh.profile.bundles
 ```
 
@@ -168,11 +203,11 @@ cordis.patch.yml        In-package bundle patch the CLI turns into dsh.profile.b
 
 - If this plugin helps you, a Star is welcome; questions and suggestions go to [Issues](https://github.com/OMSociety/dsh-ssh-tunnel/issues) or [Pull Requests](https://github.com/OMSociety/dsh-ssh-tunnel/pulls).
 - Changes are recorded in the [CHANGELOG](CHANGELOG.md).
-- [LiveAgent](https://github.com/thirsty5034/LiveAgent): prior art for the product shape and several UX patterns (see "Prior art" above)
+- LiveAgent ([thirsty5034/LiveAgent](https://github.com/thirsty5034/LiveAgent)): prior art for the product shape and several UX patterns (see "Prior art" above)
 - [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar): the sidebar host and tab contract
 - [dsh-git-forge](https://github.com/OMSociety/dsh-git-forge): sibling plugin for Git credentials and push policy
-- [DeepSeek Harness](https://github.com/deepseek-ai/dsh): the host for plugins, tools and agent shells
+- DeepSeek Harness: the host for plugins, tools and agent shells
 
 ## License and author
 
-[MIT](LICENSE). Upstream project and code author [@thirsty5034](https://github.com/thirsty5034); maintenance and additions in this repository © 2026 [@OMSociety](https://github.com/OMSociety).
+[MIT](LICENSE). The license terms and copyright are defined by LICENSE; upstream project and code author [@thirsty5034](https://github.com/thirsty5034).

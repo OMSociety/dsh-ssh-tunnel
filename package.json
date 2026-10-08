@@ -1,6 +1,6 @@
 {
   "name": "dsh-ssh-tunnel",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Multi-host SSH tunnel and SSHManager tool for DeepSeek Harness (project-scoped grants)",
   "type": "module",
   "license": "MIT",
@@ -34,7 +34,7 @@
   ],
   "engines": {
     "node": ">=20",
-    "dsh": ">=0.1.7-rc.2 <0.3.0-0"
+    "dsh": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0"
   },
   "main": "lib/index.js",
   "icon": "./icon.svg",
@@ -42,6 +42,7 @@
     ".": "./lib/index.js",
     "./locale/*.json": "./locale/*.json",
     "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -55,6 +56,7 @@
     },
     "client": {
       "inject": [
+        "dsh-better-sidebar",
         "@deepseek-ai/dsh-client-locale"
       ],
       "platform": "web"
@@ -67,7 +69,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.4",
-    "@deepseek-ai/dsh-client-locale": ">=0.1.7-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-locale": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0",
     "dsh-better-sidebar": ">=0.12.0"
   },
   "files": [
@@ -79,6 +81,7 @@
     "lib",
     "scripts/install.sh",
     "scripts/install.ps1",
+    "scripts/lib/*.cjs",
     "scripts/portal-probe.mjs",
     "scripts/smoke-test.mjs",
     "scripts/sync-to-dsh.sh",
