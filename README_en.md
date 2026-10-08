@@ -44,13 +44,7 @@ This package is a **DSH-native implementation** (Cordis host/client plugin, `dsh
 
 ## Quick start
 
-**Desktop app (recommended path)**
-
-The DeepSeek Harness desktop app manages plugins itself: install and upgrade this plugin from the app's **plugin page**. The desktop profile directory is owned exclusively by the app — do not run the CLI commands or install scripts below against it.
-
-**CLI install (self-hosted web / headless profiles only)**
-
-The three options below apply only to self-hosted web / headless profiles. Replace `<profile>` with your profile name.
+**CLI install**
 
 Option 1: install from npm
 
@@ -91,7 +85,7 @@ Installer parameters (bash and PowerShell map one to one):
 
 - A missing or nonexistent profile fails the script with a list of the profiles that do exist, exit code 2
 - `--fix-profile` / `-FixProfile`: only with this switch does the script add the plugin to the profile's `pnpm-workspace.yaml` (`minimumReleaseAgeExclude`, idempotent) and remove the hand-written mount older versions put into the profile's `cordis.patch.yml`; writes are read back and asserted, and a failure rolls the change back and exits non-zero. Without the switch both files stay untouched
-- `--restart` / `-Restart`: restarts a self-hosted web service (pm2 process name `dsh-web`); on the desktop app use its plugin page instead
+- `--restart` / `-Restart`: restarts a self-hosted web service (pm2 process name `dsh-web`)
 
 > **Note**: The dry-run flag differs between the two scripts — bash takes `--dry-run` (for example `bash scripts/install.sh --profile <profile> --dry-run`), PowerShell takes `-DryRun` (for example `pwsh -File scripts/install.ps1 -Profile <profile> -DryRun`). `--dry-run` has no effect on the PowerShell side.
 

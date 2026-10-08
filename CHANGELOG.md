@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`max_bytes` 按字节钳制。** exec 与 `sftp_read_text` 的输出上限钳制在 1024–1048576 字节（默认 exec 262144、`sftp_read_text` 524288），输出按字节截断并在结果中置 `truncated: true`。
 - **客户端注入清单补齐到达顺序边。** `dsh.client.inject` 增加 `dsh-better-sidebar`；`exports` 放行 `./cordis.patch.yml`；`files` 放行 `scripts/lib/*.cjs`（安装脚本共享逻辑）。
 - **键盘交互式认证不支持。** 该类主机在连接、重连与 `SSHManager` 中被拒绝（`credential=unsupported`），提示改用密码或私钥。
-- **文档更新。** README 安装章节重构（桌面版走 App 插件页、CLI 形态限自建 web/headless profile、`--profile` 占位符、allowBuilds 处置）、安全章节改为客观口径（本机回环、无鉴权 token、本机进程视为已授权用户）、补 seq 游标协议与超时/上限声明、0700/0600 加 POSIX 平台限定。
+- **文档更新。** 安全章节改为客观口径（本机回环、无鉴权 token、本机进程视为已授权用户）、补 seq 游标协议与超时/上限声明、0700/0600 加 POSIX 平台限定。
 
 ### 安全
 
@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`max_bytes` is clamped in bytes.** The output cap for exec and `sftp_read_text` is clamped to 1024–1048576 bytes (defaults: 262144 for exec, 524288 for `sftp_read_text`); output is truncated on byte boundaries and the result sets `truncated: true`.
 - **The client inject list completes the arrival-order edge.** `dsh.client.inject` adds `dsh-better-sidebar`; `exports` admits `./cordis.patch.yml`; `files` admits `scripts/lib/*.cjs` (installer shared logic).
 - **keyboard-interactive auth is not supported.** Such hosts are refused on connect, reconnect and in `SSHManager` (`credential=unsupported`) with a message to switch to password or private key.
-- **Documentation updates.** The README install section is restructured (desktop installs go through the app plugin page, CLI forms target self-hosted web/headless profiles, `<profile>` placeholders, allowBuilds handling), the security section states the trust boundary objectively (local loopback, no authentication token, local processes treated as authorized users), the seq cursor protocol and timeout/limit declarations are added, and the 0700/0600 statements carry a POSIX platform qualifier.
+- **Documentation updates.** The security section states the trust boundary objectively (local loopback, no authentication token, local processes treated as authorized users), the seq cursor protocol and timeout/limit declarations are added, and the 0700/0600 statements carry a POSIX platform qualifier.
 
 ### Security
 

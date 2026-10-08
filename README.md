@@ -44,13 +44,7 @@
 
 ## 快速开始
 
-**桌面版（推荐路径）**
-
-DeepSeek Harness 桌面版的插件由 App 统一管理：在 App 的**插件页**安装并升级本插件即可。桌面 profile 目录由 App 独占管理，请不要对它运行下面的 CLI 命令或安装脚本。
-
-**CLI 安装（仅限自建 web / headless profile）**
-
-以下三种方式只针对自建的 web / headless profile。`<profile>` 处填你自己的 profile 名。
+**CLI 安装**
 
 方式一：从 npm 安装
 
@@ -91,7 +85,7 @@ curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scrip
 
 - profile 缺失或不存在时脚本报错并列出实存 profile，退出码 2
 - `--fix-profile` / `-FixProfile`：仅在该开关下，脚本才补写 profile `pnpm-workspace.yaml` 的 `minimumReleaseAgeExclude`（幂等）并清理 profile `cordis.patch.yml` 里旧版写入的手动挂载；写入后回读断言，失败回滚并以非零码退出。不带该开关时这两个文件保持原样
-- `--restart` / `-Restart`：重启自托管 web 服务（按 pm2 进程名 `dsh-web`）；桌面版请在 App 的插件页操作
+- `--restart` / `-Restart`：重启自托管 web 服务（按 pm2 进程名 `dsh-web`）
 
 **装完怎么用**
 

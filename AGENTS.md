@@ -100,7 +100,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 |---|---|
 | `dsh: skipping profile bundle "dsh-ssh-tunnel"` | 先核 `dsh --version` 与 `engines.dsh`/peer 区间是否覆盖该预发布元组，预发布要单列段 |
 | `Failed to parse pnpm-workspace.yaml` 或 `can not read a block mapping entry` | 1.0.1 的 install.sh 曾追加出字面 `\n` 垃圾行；现已写后回读断言、失败回滚。遇到历史遗留的坏行仍要手工删掉那一行，别再重复跑同一脚本 |
-| `找不到 profile 目录` / `Profile dir missing` | 本机 profile 不是 `web`；文档的 CLI 形态针对自建 web/headless profile，桌面版 profile 由 App 管理 |
+| `找不到 profile 目录` / `Profile dir missing` | 本机 profile 是 `desktop`（不是 `web`） |
 | `dsh: installation rejected: ... incompatible with dsh` | 版本闸拒绝，按宿主给的 allow-version 豁免流程走，别改区间来绕过 |
 | 装好了但侧栏没有入口 | 刷新浏览器页面；开 DevTools Console 看注册期异常（宿主侧一声不吭） |
 | `未找到 dsh（可用 DSH_CMD 指定）` | git-bash 不解析 `.cmd`，在那里要写 `dsh.cmd`，或用 `DSH_CMD` 指到内嵌 CLI |
