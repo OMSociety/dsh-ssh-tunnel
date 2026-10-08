@@ -7,14 +7,14 @@
   <p>模型用 <strong>SSHManager</strong> 工具执行命令、传文件；你在侧栏管主机与授权。<strong>密钥不进模型上下文</strong>。</p>
 
   <p>
-    <a href="https://github.com/OMSociety/dsh-ssh-tunnel/releases"><img src="https://img.shields.io/github/v/tag/OMSociety/dsh-ssh-tunnel?label=version&color=4f6ef7" alt="Version"></a>
+    <a href="https://www.npmjs.com/package/dsh-ssh-tunnel"><img src="https://img.shields.io/npm/v/dsh-ssh-tunnel?label=version&color=4f6ef7" alt="Version"></a>
     <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.0--rc.2%20%3C0.3.0--0-4f6ef7" alt="DSH">
     <a href="LICENSE"><img src="https://img.shields.io/github/license/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="License"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/stargazers"><img src="https://img.shields.io/github/stars/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Stars"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/issues"><img src="https://img.shields.io/github/issues/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Issues"></a>
   </p>
 
-<a href="#这是什么">这是什么</a> • <a href="#核心特性">核心特性</a> • <a href="#快速开始">快速开始</a> • <a href="#侧栏">侧栏</a> • <a href="#模型工具">模型工具</a> • <a href="#安全">安全</a> • <a href="#开发">开发</a> • <a href="#许可证与作者">许可证与作者</a>
+<a href="#这是什么">这是什么</a> • <a href="#核心特性">核心特性</a> • <a href="#安装方式">安装方式</a> • <a href="#侧栏">侧栏</a> • <a href="#模型工具">模型工具</a> • <a href="#安全">安全</a> • <a href="#开发">开发</a> • <a href="#许可证与作者">许可证与作者</a>
 </div>
 
 ## 这是什么
@@ -42,50 +42,16 @@
 | **本地路径守卫** | 上传 / 下载 / 列举 / 删除的本机路径限制在**项目工作区根**内，词法 **与** realpath 双重校验 |
 | **界面双语** | 侧栏与面板随 DSH 界面语言在中文 / 英文间即时切换 |
 
-## 快速开始
+## 安装方式
 
-**CLI 安装**
-
-方式一：从 npm 安装
-
-```sh
-dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.1.0"
-```
-
-包已发布到 npm，随包提供预构建产物，本地不需要构建步骤；换版本就把 `@1.1.0` 换成目标版本。
-
-方式二：从 GitHub 源安装
-
-```sh
-dsh plugin --profile <profile> add "github:OMSociety/dsh-ssh-tunnel"
-```
-
-想复现某次安装就钉住 ref：在仓库地址后加 `#<tag 或提交 sha>`。
-
-方式三：一键脚本
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.sh | bash -s -- --profile <profile>
-```
+**从 npm 安装**
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.ps1))) -Profile <profile>
+# 先停掉正在运行的 DSH（运行中的服务会锁住依赖，装完再起）
+dsh plugin --profile <profile> add "dsh-ssh-tunnel"
 ```
 
-脚本参数（bash 与 PowerShell 一一对应）：
-
-| 说明 | bash | PowerShell |
-|---|---|---|
-| 安装版本（可选，缺省装最新发布版） | `[版本]`（首个位置参数） | `-Version <版本>` |
-| **目标 profile（必填，无默认值）** | `--profile <名称>` | `-Profile <名称>` |
-| 安装源（默认 `github`） | `--from github\|npm` | `-From github\|npm` |
-| 修 profile（可选开关） | `--fix-profile` | `-FixProfile` |
-| 重启 web（可选开关） | `--restart` | `-Restart` |
-| 试运行（可选开关） | `--dry-run` | `-DryRun` |
-
-- profile 缺失或不存在时脚本报错并列出实存 profile，退出码 2
-- `--fix-profile` / `-FixProfile`：仅在该开关下，脚本才补写 profile `pnpm-workspace.yaml` 的 `minimumReleaseAgeExclude`（幂等）并清理 profile `cordis.patch.yml` 里旧版写入的手动挂载；写入后回读断言，失败回滚并以非零码退出。不带该开关时这两个文件保持原样
-- `--restart` / `-Restart`：重启自托管 web 服务（按 pm2 进程名 `dsh-web`）
+> **提示**：装好后**刷新一下浏览器页面**，「SSH 隧道」入口才会出现在右侧栏——只重启宿主不够，客户端产物是页面加载时取的。
 
 **装完怎么用**
 
@@ -157,7 +123,6 @@ curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scrip
 npm test                            # 自检脚本全量回归（实际执行 node scripts/smoke-test.mjs）
 npm run check                       # 语法检查 + 自检
 node scripts/smoke-test.mjs         # 直接运行自检（离线设计，不起 SSH、不起 DSH 进程）
-bash scripts/install.sh --profile <profile> --dry-run   # 只看安装计划，不动 profile
 bash scripts/sync-to-dsh.sh --dry-run                    # 预览 link: 接入命令；去掉 --dry-run 才会改写 profile
 node scripts/portal-probe.mjs       # 客户端 Tab 渲染探针（能解析到 react 时生效，否则明确跳过）
 ```

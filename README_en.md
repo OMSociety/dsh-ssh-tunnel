@@ -7,12 +7,13 @@
   <p>The model drives the <strong>SSHManager</strong> tool to run commands and move files; you manage hosts and grants in the sidebar. <strong>Secrets never enter model context</strong>.</p>
 
   <p>
-    <a href="https://github.com/OMSociety/dsh-ssh-tunnel/releases"><img src="https://img.shields.io/github/v/tag/OMSociety/dsh-ssh-tunnel?label=version&color=4f6ef7" alt="Version"></a>
+    <a href="https://www.npmjs.com/package/dsh-ssh-tunnel"><img src="https://img.shields.io/npm/v/dsh-ssh-tunnel?label=version&color=4f6ef7" alt="Version"></a>
     <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.0--rc.2%20%3C0.3.0--0-4f6ef7" alt="DSH">
     <a href="LICENSE"><img src="https://img.shields.io/github/license/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="License"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/stargazers"><img src="https://img.shields.io/github/stars/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Stars"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/issues"><img src="https://img.shields.io/github/issues/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Issues"></a>
   </p>
+<a href="#what-this-is">What this is</a> • <a href="#features">Features</a> • <a href="#installation">Installation</a> • <a href="#sidebar">Sidebar</a> • <a href="#model-tool">Model tool</a> • <a href="#security">Security</a> • <a href="#development">Development</a> • <a href="#license-and-author">License and author</a>
 </div>
 
 ## What this is
@@ -27,8 +28,6 @@ Its companion plugin is [dsh-git-forge](https://github.com/OMSociety/dsh-git-for
 
 **The product shape and several UX patterns are informed by the open-source [LiveAgent](https://github.com/thirsty5034/LiveAgent)** (multi-host SSH inventory, project-scoped access, sidebar tunnel management, center terminal / SFTP surfaces).
 
-This package is a **DSH-native implementation** (Cordis host/client plugin, official right-sidebar tab, `SSHManager` tool, DSH-local secret layout). It is **not** a git fork of LiveAgent and does **not** vendor LiveAgent sources. Consult LiveAgent under its own license when comparing designs.
-
 ## Features
 
 | Feature | Description |
@@ -42,56 +41,14 @@ This package is a **DSH-native implementation** (Cordis host/client plugin, offi
 | **Local path guard** | Local upload / download / list / delete paths are constrained to the **project workspace root**, with both lexical and realpath checks |
 | **Bilingual UI** | Sidebar and panel follow the DSH interface language between Chinese and English live |
 
-## Quick start
+## Installation
 
-**CLI install**
-
-Option 1: install from npm
-
-```sh
-dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.1.0"
-```
-
-The package is published to npm and ships the prebuilt artifacts, so no local build step is involved. Replace `@1.1.0` to install another version.
-
-Option 2: install from the GitHub source
-
-```sh
-dsh plugin --profile <profile> add "github:OMSociety/dsh-ssh-tunnel"
-```
-
-To reproduce a specific install, pin a ref by appending `#<tag or commit sha>` to the repository URL.
-
-Option 3: one-line installer
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.sh | bash -s -- --profile <profile>
-```
+**Install from npm**
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/scripts/install.ps1))) -Profile <profile>
+# stop the running DSH first (a live service holds the dependency lock; start it again afterwards)
+dsh plugin --profile <profile> add "dsh-ssh-tunnel"
 ```
-
-Installer parameters (bash and PowerShell map one to one):
-
-| Purpose | bash | PowerShell |
-|---|---|---|
-| Version to install (optional; latest release by default) | `[version]` (first positional argument) | `-Version <version>` |
-| **Target profile (required, no default)** | `--profile <name>` | `-Profile <name>` |
-| Install source (default `github`) | `--from github\|npm` | `-From github\|npm` |
-| Profile fix (optional switch) | `--fix-profile` | `-FixProfile` |
-| Restart web (optional switch) | `--restart` | `-Restart` |
-| Dry run (optional switch) | `--dry-run` | `-DryRun` |
-
-- A missing or nonexistent profile fails the script with a list of the profiles that do exist, exit code 2
-- `--fix-profile` / `-FixProfile`: only with this switch does the script add the plugin to the profile's `pnpm-workspace.yaml` (`minimumReleaseAgeExclude`, idempotent) and remove the hand-written mount older versions put into the profile's `cordis.patch.yml`; writes are read back and asserted, and a failure rolls the change back and exits non-zero. Without the switch both files stay untouched
-- `--restart` / `-Restart`: restarts a self-hosted web service (pm2 process name `dsh-web`)
-
-> **Note**: The dry-run flag differs between the two scripts — bash takes `--dry-run` (for example `bash scripts/install.sh --profile <profile> --dry-run`), PowerShell takes `-DryRun` (for example `pwsh -File scripts/install.ps1 -Profile <profile> -DryRun`). `--dry-run` has no effect on the PowerShell side.
-
-> **Note**: When no `dsh` command is on `PATH`, the script falls back to `npx` to run the installer: it prints the command it is about to execute and asks for confirmation first; set the environment variable `DSH_INSTALL_YES=1` to skip the prompt.
-
-> **Note**: After installing, the script reads the profile's `node_modules/.modules.yaml`; if it records `ignoredBuilds` (dependency build scripts blocked by pnpm), it prints a copy-paste exemption recipe — use the whole `ignoredBuilds` entry line verbatim as the key in `allowBuilds` inside `pnpm-workspace.yaml` with the value `true`. The key must match the lockfile literally; a bare package name does not work.
 
 > **Note**: After installing, **refresh the browser page** for the "SSH Tunnel" entry to appear in the sidebar — restarting the host alone is not enough, because the client artifact is fetched when the page loads.
 
@@ -159,19 +116,12 @@ Under `$DSH_HOME/ssh-tunnel/` (directory mode `0700`; this is POSIX behavior —
 | `grants.json` | `projectPathKey → hostIds[]` | `0600` |
 | `known_hosts.json` | Trusted host key fingerprints | `0600` |
 
-## UI internationalization
-
-- Namespace: `sshTunnel`; dictionaries `zh` / `en` registered on `ctx.locale`
-- Tab title and panel follow the DSH interface language live; switching the language remounts the plugin panel — the terminal and SFTP views are rebuilt, while the remote session itself is unaffected
-- Host-side `SSHManager` strings stay English (model-facing)
-
 ## Development
 
 ```sh
 npm test                            # full regression of the smoke scripts (runs node scripts/smoke-test.mjs)
 npm run check                       # syntax check + smoke tests
 node scripts/smoke-test.mjs         # run the smoke scripts directly (offline by design: no SSH, no DSH process)
-bash scripts/install.sh --profile <profile> --dry-run   # print the install plan without touching the profile
 bash scripts/sync-to-dsh.sh --dry-run                    # preview the link: registration; drop --dry-run to actually rewrite the profile
 node scripts/portal-probe.mjs       # client tab render probe (runs when react resolves, otherwise skips)
 ```
