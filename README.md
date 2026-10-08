@@ -8,7 +8,7 @@
 
   <p>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/releases"><img src="https://img.shields.io/github/v/tag/OMSociety/dsh-ssh-tunnel?label=version&color=4f6ef7" alt="Version"></a>
-    <img src="https://img.shields.io/badge/DSH-%3E%3D0.1.7--rc.2%20%3C0.2.0--0%20%7C%7C%20%3E%3D0.2.0--rc.1%20%3C0.3.0--0-4f6ef7" alt="DSH">
+    <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.0--rc.2%20%3C0.3.0--0-4f6ef7" alt="DSH">
     <a href="LICENSE"><img src="https://img.shields.io/github/license/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="License"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/stargazers"><img src="https://img.shields.io/github/stars/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Stars"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/issues"><img src="https://img.shields.io/github/issues/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Issues"></a>
@@ -19,7 +19,7 @@
 
 ## 这是什么
 
-**DSH SSH Tunnel** 是 DeepSeek Harness 的社区插件，挂在右侧栏宿主 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 上：把多台 SSH 主机收进一个**主机库**，按项目授权，然后在中央面板里开**交互式终端**（xterm）或**双栏 SFTP**。
+**DSH SSH Tunnel** 是 DeepSeek Harness 的社区插件，挂在 **DSH 官方右侧栏**的标签页上：把多台 SSH 主机收进一个**主机库**，按项目授权，然后在中央面板里开**交互式终端**（xterm）或**双栏 SFTP**。
 
 它**不会**把全局 `fs` / `subprocess` 换成一个远程盘：远端操作只发生在你显式调用的 `SSHManager` 工具与面板里，本地文件与远端文件始终是两侧分明的东西。
 
@@ -49,10 +49,10 @@
 方式一：从 npm 安装
 
 ```sh
-dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.0.2"
+dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.1.0"
 ```
 
-包已发布到 npm，随包提供预构建产物，本地不需要构建步骤；换版本就把 `@1.0.2` 换成目标版本。
+包已发布到 npm，随包提供预构建产物，本地不需要构建步骤；换版本就把 `@1.1.0` 换成目标版本。
 
 方式二：从 GitHub 源安装
 
@@ -184,7 +184,6 @@ cordis.patch.yml        包内 bundle patch，CLI 据此写入 dsh.profile.bundl
 - 如果这个插件对你有帮助，欢迎点亮 Star；有问题或建议请提 [Issue](https://github.com/OMSociety/dsh-ssh-tunnel/issues) 或 [Pull Request](https://github.com/OMSociety/dsh-ssh-tunnel/pulls)。
 - 变更记录见 [CHANGELOG](CHANGELOG.md)。
 - LiveAgent（[thirsty5034/LiveAgent](https://github.com/thirsty5034/LiveAgent)）：产品形态与部分 UX 的参考来源（见上文「参考来源」）
-- [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)：右侧栏宿主与 Tab 契约
 - [dsh-git-forge](https://github.com/OMSociety/dsh-git-forge)：同门插件，Git 凭据与 push 策略
 - DeepSeek Harness：插件、工具与 agent shell 的宿主
 

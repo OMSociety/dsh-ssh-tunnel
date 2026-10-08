@@ -1,6 +1,6 @@
 {
   "name": "dsh-ssh-tunnel",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Multi-host SSH tunnel and SSHManager tool for DeepSeek Harness (project-scoped grants)",
   "type": "module",
   "license": "MIT",
@@ -28,13 +28,11 @@
     "deepseek-harness",
     "ssh",
     "sftp",
-    "cordis",
-    "better-sidebar",
-    "dsh-better-sidebar"
+    "cordis"
   ],
   "engines": {
     "node": ">=20",
-    "dsh": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0"
+    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
   },
   "main": "lib/index.js",
   "icon": "./icon.svg",
@@ -56,7 +54,6 @@
     },
     "client": {
       "inject": [
-        "dsh-better-sidebar",
         "@deepseek-ai/dsh-client-locale"
       ],
       "platform": "web"
@@ -69,8 +66,8 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.4",
-    "@deepseek-ai/dsh-client-locale": ">=0.1.7-rc.2 <0.2.0-0 || >=0.2.0-rc.1 <0.3.0-0",
-    "dsh-better-sidebar": ">=0.12.0"
+    "@deepseek-ai/dsh-client-locale": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-sidebar-right": ">=0.2.0-rc.2 <0.3.0-0"
   },
   "files": [
     "CHANGELOG.md",

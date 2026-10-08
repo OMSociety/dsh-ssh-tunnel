@@ -205,7 +205,6 @@ Say "Running: $CliDisplay plugin --profile $Profile add $AddSpec"
 & $CliExe @CliArgs plugin --profile $Profile add $AddSpec
 if ($LASTEXITCODE -ne 0) {
   Warn 'dsh plugin add failed. Check network/registry, or run the command above manually.'
-  Warn "Prerequisite suggestion: dsh plugin --profile $Profile add dsh-better-sidebar"
   exit 1
 }
 

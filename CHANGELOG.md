@@ -10,6 +10,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-09
+
+### 变更
+
+- **客户端面板改挂 DSH 官方右侧栏。** 标签页类型经 `sidebarRightTabs.register` 注册，正文与标题分别占用官方槽位 `sidebar.right.pane.tab` 与 `sidebar.right.pane.tab.title`；引导页入口框由 `guide` 条目渲染（order 44）。注册不再经由第三方侧栏宿主插件：`dsh-better-sidebar` 的 peer、`dsh.client.inject` 条目与 keywords 一并移除。
+- **客户端不再传项目 cwd 提示。** `getProjectContext` 只带 `sessionId`，项目路径由宿主从会话头（`ctx.sessions.get(sessionId).header.cwd`）解析；随之删除宿主注入的 `scope.sessionId` / `scope.cwd` 等字段，会话 id 改取官方席位平铺注入的 `sessionId`。
+- **DSH 兼容下限抬到 0.2.0-rc.2。** `engines.dsh` 与 `@deepseek-ai/dsh-client-locale` peer 收敛为单段 `>=0.2.0-rc.2 <0.3.0-0`，并新增同区间的 `@deepseek-ai/dsh-client-ui-sidebar-right` peer。
+- **官方右侧栏的标签页不自动常驻。** 用户从标签条「+」的引导页入口打开面板；布局按会话持久化，新会话第一次需各开一次。
+
+### Changed
+
+- **The client panel is mounted on the official DSH right sidebar.** The tab type registers through `sidebarRightTabs.register`, and the body and title take the official seats `sidebar.right.pane.tab` and `sidebar.right.pane.tab.title`; the guide-page entry box renders from the `guide` entry (order 44). Registration no longer goes through a third-party sidebar host plugin: the `dsh-better-sidebar` peer, its `dsh.client.inject` entry and its keywords are removed.
+- **The client no longer sends a project cwd hint.** `getProjectContext` carries only `sessionId`, and the host resolves the project path from the session header (`ctx.sessions.get(sessionId).header.cwd`); the host-injected `scope.sessionId` / `scope.cwd` fields go away, and the session id now comes from the flat `sessionId` prop the official seat injects.
+- **The DSH compatibility floor moves to 0.2.0-rc.2.** `engines.dsh` and the `@deepseek-ai/dsh-client-locale` peer collapse into the single segment `>=0.2.0-rc.2 <0.3.0-0`, and a new `@deepseek-ai/dsh-client-ui-sidebar-right` peer declares the same range.
+- **The official right-sidebar tab is not resident by default.** Users open the panel from the "+" guide page in the tab strip; layout persists per session, so each new session needs one open.
+
 ## [1.0.2] - 2026-10-08
 
 ### 新增

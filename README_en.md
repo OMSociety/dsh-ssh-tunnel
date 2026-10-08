@@ -8,7 +8,7 @@
 
   <p>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/releases"><img src="https://img.shields.io/github/v/tag/OMSociety/dsh-ssh-tunnel?label=version&color=4f6ef7" alt="Version"></a>
-    <img src="https://img.shields.io/badge/DSH-%3E%3D0.1.7--rc.2%20%3C0.2.0--0%20%7C%7C%20%3E%3D0.2.0--rc.1%20%3C0.3.0--0-4f6ef7" alt="DSH">
+    <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.0--rc.2%20%3C0.3.0--0-4f6ef7" alt="DSH">
     <a href="LICENSE"><img src="https://img.shields.io/github/license/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="License"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/stargazers"><img src="https://img.shields.io/github/stars/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Stars"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/issues"><img src="https://img.shields.io/github/issues/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Issues"></a>
@@ -17,7 +17,7 @@
 
 ## What this is
 
-**DSH SSH Tunnel** is a community plugin for DeepSeek Harness, mounted in the sidebar host [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar). It collects your SSH hosts into one **host inventory**, authorizes them per project, and then opens an **interactive terminal** (xterm) or **dual-pane SFTP** in the center panel.
+**DSH SSH Tunnel** is a community plugin for DeepSeek Harness, mounted as a tab in the **official DSH right sidebar**. It collects your SSH hosts into one **host inventory**, authorizes them per project, and then opens an **interactive terminal** (xterm) or **dual-pane SFTP** in the center panel.
 
 It does **not** replace the global `fs` / `subprocess` with a remote disk: remote operations happen only in the `SSHManager` tool you call explicitly and inside the panel, and local and remote files remain two clearly separated sides.
 
@@ -27,7 +27,7 @@ Its companion plugin is [dsh-git-forge](https://github.com/OMSociety/dsh-git-for
 
 **The product shape and several UX patterns are informed by the open-source [LiveAgent](https://github.com/thirsty5034/LiveAgent)** (multi-host SSH inventory, project-scoped access, sidebar tunnel management, center terminal / SFTP surfaces).
 
-This package is a **DSH-native implementation** (Cordis host/client plugin, `dsh-better-sidebar` tab, `SSHManager` tool, DSH-local secret layout). It is **not** a git fork of LiveAgent and does **not** vendor LiveAgent sources. Consult LiveAgent under its own license when comparing designs.
+This package is a **DSH-native implementation** (Cordis host/client plugin, official right-sidebar tab, `SSHManager` tool, DSH-local secret layout). It is **not** a git fork of LiveAgent and does **not** vendor LiveAgent sources. Consult LiveAgent under its own license when comparing designs.
 
 ## Features
 
@@ -49,10 +49,10 @@ This package is a **DSH-native implementation** (Cordis host/client plugin, `dsh
 Option 1: install from npm
 
 ```sh
-dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.0.2"
+dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.1.0"
 ```
 
-The package is published to npm and ships the prebuilt artifacts, so no local build step is involved. Replace `@1.0.2` to install another version.
+The package is published to npm and ships the prebuilt artifacts, so no local build step is involved. Replace `@1.1.0` to install another version.
 
 Option 2: install from the GitHub source
 
@@ -198,7 +198,6 @@ cordis.patch.yml        In-package bundle patch the CLI turns into dsh.profile.b
 - If this plugin helps you, a Star is welcome; questions and suggestions go to [Issues](https://github.com/OMSociety/dsh-ssh-tunnel/issues) or [Pull Requests](https://github.com/OMSociety/dsh-ssh-tunnel/pulls).
 - Changes are recorded in the [CHANGELOG](CHANGELOG.md).
 - LiveAgent ([thirsty5034/LiveAgent](https://github.com/thirsty5034/LiveAgent)): prior art for the product shape and several UX patterns (see "Prior art" above)
-- [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar): the sidebar host and tab contract
 - [dsh-git-forge](https://github.com/OMSociety/dsh-git-forge): sibling plugin for Git credentials and push policy
 - DeepSeek Harness: the host for plugins, tools and agent shells
 

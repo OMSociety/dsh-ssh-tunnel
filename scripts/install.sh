@@ -51,8 +51,7 @@ dsh-ssh-tunnel 一键安装
 环境：DSH_HOME（默认 ~/.dsh）、DSH_CMD（默认 dsh）、REGISTRY、GITHUB_REPO、
       DSH_INSTALL_YES=1（跳过 npx 兜底确认）
 
-前置：目标 profile 已初始化（含 package.json 与 pnpm-workspace.yaml）；
-      建议已装 dsh-better-sidebar（侧栏 Tab 依赖）。
+前置：目标 profile 已初始化（含 package.json 与 pnpm-workspace.yaml）。
 EOF
 }
 
@@ -237,7 +236,6 @@ read -r -a CLI_ARR <<< "$DSH_CLI_CMD"
 if ! "${CLI_ARR[@]}" plugin --profile "$PROFILE_NAME" add "$ADD_SPEC"; then
   warn "dsh plugin add 失败。可检查网络、registry，或手动执行："
   warn "  $DSH_CLI_CMD plugin --profile $PROFILE_NAME add \"$ADD_SPEC\""
-  warn "前置建议：dsh plugin --profile $PROFILE_NAME add dsh-better-sidebar"
   exit 1
 fi
 

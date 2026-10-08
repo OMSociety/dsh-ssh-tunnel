@@ -81,26 +81,64 @@ vm.runInContext(src, sandbox, { filename: "client.js" });
 if (!loaded || loaded.id !== "dsh-ssh-tunnel") throw new Error("module did not register");
 const mod = loaded.factory(sandbox.require);
 if (typeof mod.apply !== "function" || !Array.isArray(mod.inject)) throw new Error("bad exports");
+if (!mod.inject.includes("slots")) throw new Error("bundle does not declare the slots service");
 
+// Mock cordis ctx. `ctx.inject(deps, cb)` dispatches on the requested dependency
+// names — the bundle asks for ["sidebarRightTabs", "sidebarRight"] and receives an
+// object exposing both `get(name)` and bare properties. `ctx.slots` carries the two
+// pane seats; each register() hands back a disposer, as the real service does.
 const captured = {};
+function sidebarServices() {
+	return {
+		get(name) { return this[name]; },
+		sidebarRightTabs: {
+			register(descriptor) { captured.tab = descriptor; return () => {}; },
+		},
+		sidebarRight: {
+			openTab() {},
+		},
+	};
+}
 const ctx = {
 	locale: null,
-	betterSidebar: { registerTab: (d) => { captured.tab = d; return () => {}; } },
+	slots: {
+		inject(name, cb) {
+			const off = cb();
+			return typeof off === "function" ? off : () => {};
+		},
+		register(seat, component) { captured[seat.name + ":" + seat.key] = component; return () => {}; },
+	},
+	inject(deps, cb) { return cb(sidebarServices()); },
 	effect(fn) { return fn(); },
 };
 mod.apply(ctx);
-if (!captured.tab || typeof captured.tab.component !== "function") throw new Error("tab not registered");
 
+if (!captured.tab) throw new Error("tab type not registered");
+if (captured.tab.kind !== "ssh-tunnel") throw new Error("unexpected tab kind: " + captured.tab.kind);
 // zh/en dictionaries register only when ctx.locale exists — the title factory must
 // still return a string through the built-in fallback.
 if (!captured.tab.title || typeof captured.tab.title() !== "string") throw new Error("title fn broken");
+const guide = Array.isArray(captured.tab.guide) ? captured.tab.guide[0] : null;
+if (!guide || typeof guide.id !== "string") throw new Error("guide entry has no id");
+if (typeof guide.description !== "function" || typeof guide.description() !== "string")
+	throw new Error("guide description fn broken");
+if (typeof guide.icon !== "function") throw new Error("guide icon fn missing");
 
-const el = captured.tab.component({ visible: true, scope: {} });
-const html = renderToString(el);
+const Body = captured["sidebar.right.pane.tab:" + captured.tab.id];
+if (typeof Body !== "function") throw new Error("pane body seat not registered");
+const Title = captured["sidebar.right.pane.tab.title:" + captured.tab.id];
+if (typeof Title !== "function") throw new Error("pane title seat not registered");
+
+// The framework injects the pane props: the owning sessionId plus the tab-info hook.
+const html = renderToString(
+	Body({ sessionId: "probe", useTabInfo: () => ({ tab: { visible: true } }) }),
+);
+const titleHtml = renderToString(Title({ sessionId: "probe", useTabInfo: () => ({ tab: { visible: true } }) }));
 
 // Markers are the class names the tab tree actually renders (lib/client.js).
 for (const marker of ["ssh-t-root", "ssh-t-head"]) {
 	if (!html.includes(marker)) throw new Error("missing sidebar markup: " + marker);
 }
-console.log("probe OK: tab tree renders, length =", html.length);
+if (!titleHtml.includes("SSH")) throw new Error("tab title seat rendered no label");
+console.log("probe OK: tab type + both pane seats register, body tree renders, length =", html.length);
 console.log("portal available:", typeof ReactDOM.createPortal === "function");
