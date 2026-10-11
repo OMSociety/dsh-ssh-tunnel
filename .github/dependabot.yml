@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # 运行时依赖只有 ssh2（^ 浮动，安全面在这半边，值得盯）；@xterm/* 两件是仓库
+  # 宪法（AGENTS.md）明确的精确钉版，README 有「钉死」表述——机器人 bump 会与
+  # 文档化决策打架，忽略；@deepseek-ai/* 是宿主 peer，区间随宿主版本走，人工决策。
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: '@deepseek-ai/*'
+      - dependency-name: '@xterm/*'
