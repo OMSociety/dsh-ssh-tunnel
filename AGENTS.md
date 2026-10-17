@@ -65,7 +65,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 - 禁止用 `String(a || b)` 承担必填校验。原因：缺参数会变成字面量文件名 `undefined` 写到本地盘或远端目录（1.0.1 实测 12 处——按含路径参数的 `String(a || b)` 调用计、落在 11 行——能把用户文件改名成 `undefined` 并回 `ok: true`）。1.0.2 起统一走 `lib/shared/args.js` 的 `requireString`/`stringOrDefault`（缺了就 throw），别手写 `||` 兜底。
 - 禁止把 `chmod 0600`/`0700` 当成 Windows 上的凭据保护。原因：NTFS 下实测 ACL 全量继承父目录，`chmodSync` 不改 DACL。写进文档时必须加平台限定。
 - 禁止让路径守卫保留 `/workspace` 兜底还对外称「不假设挂载点」。原因：Windows 上它解析成宿主进程当前盘的 `\workspace`，该目录存在时守卫作用域就从当前项目放大到整棵 workspace 树。root 取不到就拒绝，不要兜底。
-- 禁止为了「验证安装」而运行 `dsh plugin ...`、改 `~/.dsh/profiles/**` 或改写 profile 的 `pnpm-workspace.yaml`/`cordis.patch.yml`。原因：桌面版 profile 由 App 独占管理，运行中的服务会锁依赖。要验证就把 `DSH_HOME` 与 `DSH_CMD` 指向系统临时目录里的伪 home 与桩，跑完再核对真实 profile 的哈希未变；停启 DSH 由用户执行。
+- 禁止为了「验证安装」而运行 `dsh plugin ...`、改 `~/.dsh/profiles/**` 或改写 profile 的 `pnpm-workspace.yaml`/`cordis.patch.yml`。原因：那是用户的真实环境，运行中的宿主锁着依赖，改动会撞锁或把插件装成半残。要验证就把 `DSH_HOME` 与 `DSH_CMD` 指向系统临时目录里的伪 home 与桩，跑完再核对真实 profile 的哈希未变；停启 DSH 由用户执行。
 - 禁止读取或转述 `secrets.json` 的内容，也禁止把它任何片段写进仓库文件、测试夹具或提交信息。原因：那是明文凭据文件，数据目录本就不该进仓库。
 - 禁止用错误文案的正则白名单判断会话终态。原因：白名单外的错误既不显示也不停止轮询，状态栏会谎报 connected；终态要用宿主返回的状态字段。
 - 禁止在 README、CHANGELOG、注释或测试里写真实主机名、内网地址、个人绝对路径或 emoji。原因：这是对外发布的包，仓库里任何一行都会被 `npm pack` 带进产物并被第三方读到。
