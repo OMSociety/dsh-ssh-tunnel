@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { existsSync, mkdirSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import { generateKeyPairSync } from 'node:crypto'
 import { normalizeProjectKey, isPathInsideRoots, constrainToWorkspace, workspaceRoot, workspaceRoots } from '../lib/shared/path.js'
 import { requireString, stringOrDefault } from '../lib/shared/args.js'
@@ -132,6 +132,97 @@ test('normalizeProjectKey strips trailing slash', () => {
 test('normalizeProjectKey empty', () => {
   assert.equal(normalizeProjectKey(''), '')
   assert.equal(normalizeProjectKey(null), '')
+})
+
+/**
+ * The client is a self-contained browser bundle whose helpers are closure-scoped,
+ * so these cases evaluate the exact source slice instead of importing it. Keep the
+ * slice anchored on the functions' own declarations: if either is renamed the
+ * lookup throws and the suite fails loudly rather than silently testing nothing.
+ */
+function clientPathHelpers() {
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+  const from = source.indexOf('function splitPath(')
+  const to = source.indexOf('function joinPath(')
+  assert.ok(from !== -1 && to > from, 'client path helpers are locatable in lib/client.js')
+  const declared = source.slice(from, to)
+  const factory = new Function(`${declared}; return { parentOf, canGoUp, compareForm }`)
+  return factory()
+}
+
+test('client parentOf keeps the POSIX leading slash', () => {
+  const { parentOf } = clientPathHelpers()
+  assert.equal(parentOf('/srv/app/log'), '/srv/app')
+  assert.equal(parentOf('/srv/app'), '/srv')
+  assert.equal(parentOf('/srv'), '/')
+  assert.equal(parentOf('/'), '/')
+  assert.equal(parentOf('/srv/app/'), '/srv', 'trailing separator is ignored')
+  // A relative head would make the host re-join it onto the workspace root.
+  for (const p of ['/srv/app/log', '/srv/app', '/srv']) {
+    assert.ok(parentOf(p).startsWith('/'), `${p} parent stays absolute`)
+  }
+})
+
+test('client parentOf preserves the Windows drive prefix', () => {
+  const { parentOf } = clientPathHelpers()
+  assert.equal(parentOf('C:\\Work\\proj\\sub'), 'C:\\Work\\proj')
+  assert.equal(parentOf('C:\\Work\\proj'), 'C:\\Work')
+  assert.equal(parentOf('C:\\Work'), 'C:\\')
+  assert.equal(parentOf('C:\\'), 'C:\\')
+})
+
+test('client canGoUp stops at the local workspace root', () => {
+  const { canGoUp } = clientPathHelpers()
+  const root = '/srv/app'
+  assert.equal(canGoUp(root, 'local', root), false, 'the root itself has no way up')
+  assert.equal(canGoUp(`${root}/`, 'local', root), false, 'trailing separator is normalized')
+  assert.equal(canGoUp(`${root}/log`, 'local', root), true, 'a child may go up')
+  assert.equal(canGoUp('/srv', 'local', root), false, 'above the root is refused')
+  assert.equal(canGoUp('/srv/app2', 'local', root), false, 'a prefix sibling is not inside')
+  assert.equal(canGoUp(root, 'local', ''), true, 'unbound project leaves the control alone')
+})
+
+test('client canGoUp stops at the filesystem root on both panes', () => {
+  const { canGoUp } = clientPathHelpers()
+  assert.equal(canGoUp('/', 'local', '/srv/app'), false, 'POSIX filesystem root')
+  assert.equal(canGoUp('/', 'remote', ''), false, 'remote filesystem root')
+  assert.equal(canGoUp('/srv', 'remote', ''), true, 'a remote directory below root may go up')
+  assert.equal(canGoUp('C:\\', 'local', 'C:\\Work'), false, 'Win32 drive root')
+  assert.equal(canGoUp('C:\\Work', 'local', 'C:\\Work'), false, 'Win32 workspace root')
+  assert.equal(canGoUp('C:\\WORK\\sub', 'local', 'c:\\work'), true, 'Win32 compares case-insensitively')
+  assert.equal(canGoUp('\\\\SERVER\\share\\dir', 'local', '\\\\server\\share'), true, 'UNC shares fold case like other Win32 paths')
+})
+
+test('client up-button wiring consumes the boundary helpers', () => {
+  // The pane lives inside the bundle's closure, so this case asserts the wiring
+  // itself: upDisabled is bound to canGoUp, disabled/title consume it, and the
+  // hint sits on a wrapper a disabled button cannot swallow.
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+  const from = source.indexOf('function pane(side) {')
+  const to = source.indexOf('}, t("parentDir")),')
+  assert.ok(from !== -1 && to > from, 'the up button wiring is locatable in lib/client.js')
+  const pane = source.slice(from, to)
+  assert.match(pane, /const upDisabled = !canGoUp\(path, side, projectPathKey\);/, 'upDisabled is bound to canGoUp')
+  assert.match(pane, /disabled: upDisabled/, 'the up button consumes upDisabled')
+  assert.match(pane, /title: upDisabled \? t\(isLocal \? "parentAtRoot" : "remoteAtRoot"\) : undefined/, 'the hint picks the pane-specific key')
+  assert.match(pane, /ssh-t-btn-wrap/, 'the hint sits on a wrapper the disabled button cannot swallow')
+  assert.match(source, /\.ssh-t-btn:disabled\{[^}]*pointer-events:none/, 'a disabled button lets the wrapper receive hover')
+})
+
+test('client locale dictionaries stay key-symmetric', () => {
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+  const keysOf = (name) => {
+    const block = source.match(new RegExp(`\\b${name}\\s*=\\s*\\{([\\s\\S]*?)\\n\\t\\t\\};`))
+    assert.ok(block, `${name} dictionary is locatable`)
+    return [...block[1].matchAll(/^\s+([A-Za-z][A-Za-z0-9]*)\s*:/gm)].map((m) => m[1])
+  }
+  const zh = keysOf('zh')
+  const en = keysOf('en')
+  assert.equal(zh.length, en.length, 'both dictionaries declare the same number of keys')
+  assert.deepEqual([...zh].sort(), [...en].sort(), 'both dictionaries declare the same keys')
+  for (const key of ['parentDir', 'parentAtRoot']) {
+    assert.ok(zh.includes(key) && en.includes(key), `${key} is localized on both sides`)
+  }
 })
 
 test('isPathInsideRoots allows children only', () => {
