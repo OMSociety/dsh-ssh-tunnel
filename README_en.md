@@ -13,7 +13,7 @@
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/stargazers"><img src="https://img.shields.io/github/stars/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Stars"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/issues"><img src="https://img.shields.io/github/issues/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Issues"></a>
   </p>
-<a href="#what-this-is">What this is</a> • <a href="#features">Features</a> • <a href="#installation">Installation</a> • <a href="#sidebar">Sidebar</a> • <a href="#model-tool">Model tool</a> • <a href="#security">Security</a> • <a href="#development">Development</a> • <a href="#license-and-author">License and author</a>
+<a href="#what-this-is">What this is</a> • <a href="#features">Features</a> • <a href="#screenshots">Screenshots</a> • <a href="#installation">Installation</a> • <a href="#sidebar">Sidebar</a> • <a href="#model-tool">Model tool</a> • <a href="#security">Security</a> • <a href="#development">Development</a> • <a href="#license-and-author">License and author</a>
 </div>
 
 ## What this is
@@ -40,6 +40,19 @@ Its companion plugin is [dsh-git-forge](https://github.com/OMSociety/dsh-git-for
 | **Host key fingerprints** | Stored as SHA256 hex in `known_hosts.json`; first connect or a changed fingerprint is confirmed in the sidebar with the fingerprint shown |
 | **Local path guard** | Local upload / download / list / delete paths are constrained to the **project workspace root**, with both lexical and realpath checks |
 | **Bilingual UI** | Sidebar and panel follow the DSH interface language between Chinese and English live |
+
+## Screenshots
+
+<table>
+<tr>
+<td width="66%" align="center"><a href="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sftp.png"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sftp.png" alt="Center panel: terminal and dual-pane SFTP with the project workspace on the left and the remote side on the right" width="560"></a></td>
+<td width="34%" align="center"><a href="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sidebar.png"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sidebar.png" alt="Sidebar: host inventory, per-project grants and tunnel sessions" width="230"></a></td>
+</tr>
+<tr>
+<td align="center">Center panel: terminal and dual-pane SFTP — project workspace on the left, remote on the right, drag across panes</td>
+<td align="center">Sidebar: host inventory, per-project grants and tunnel sessions</td>
+</tr>
+</table>
 
 ## Installation
 

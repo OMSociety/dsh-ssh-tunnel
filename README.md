@@ -14,7 +14,7 @@
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/issues"><img src="https://img.shields.io/github/issues/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Issues"></a>
   </p>
 
-<a href="#这是什么">这是什么</a> • <a href="#核心特性">核心特性</a> • <a href="#安装方式">安装方式</a> • <a href="#侧栏">侧栏</a> • <a href="#模型工具">模型工具</a> • <a href="#安全">安全</a> • <a href="#开发">开发</a> • <a href="#许可证与作者">许可证与作者</a>
+<a href="#这是什么">这是什么</a> • <a href="#核心特性">核心特性</a> • <a href="#效果">效果</a> • <a href="#安装方式">安装方式</a> • <a href="#侧栏">侧栏</a> • <a href="#模型工具">模型工具</a> • <a href="#安全">安全</a> • <a href="#开发">开发</a> • <a href="#许可证与作者">许可证与作者</a>
 </div>
 
 ## 这是什么
@@ -41,6 +41,19 @@
 | **主机密钥指纹** | 以 SHA256 hex 存入 `known_hosts.json`，首次连接或指纹变更时在侧栏确认并展示指纹 |
 | **本地路径守卫** | 上传 / 下载 / 列举 / 删除的本机路径限制在**项目工作区根**内，词法 **与** realpath 双重校验 |
 | **界面双语** | 侧栏与面板随 DSH 界面语言在中文 / 英文间即时切换 |
+
+## 效果
+
+<table>
+<tr>
+<td width="66%" align="center"><a href="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sftp.png"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sftp.png" alt="中央面板：终端与双栏 SFTP，左侧项目工作区、右侧远端" width="560"></a></td>
+<td width="34%" align="center"><a href="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sidebar.png"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sidebar.png" alt="右侧栏：主机库、按项目授权与隧道会话" width="230"></a></td>
+</tr>
+<tr>
+<td align="center">中央面板：终端与双栏 SFTP —— 左侧项目工作区、右侧远端，可跨栏拖拽传输</td>
+<td align="center">右侧栏：主机库、按项目授权与隧道会话</td>
+</tr>
+</table>
 
 ## 安装方式
 
