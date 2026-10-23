@@ -190,6 +190,23 @@ test('client canGoUp stops at the filesystem root on both panes', () => {
   assert.equal(canGoUp('C:\\', 'local', 'C:\\Work'), false, 'Win32 drive root')
   assert.equal(canGoUp('C:\\Work', 'local', 'C:\\Work'), false, 'Win32 workspace root')
   assert.equal(canGoUp('C:\\WORK\\sub', 'local', 'c:\\work'), true, 'Win32 compares case-insensitively')
+  assert.equal(canGoUp('\\\\SERVER\\share\\dir', 'local', '\\\\server\\share'), true, 'UNC shares fold case like other Win32 paths')
+})
+
+test('client up-button wiring consumes the boundary helpers', () => {
+  // The pane lives inside the bundle's closure, so this case asserts the wiring
+  // itself: upDisabled is bound to canGoUp, disabled/title consume it, and the
+  // hint sits on a wrapper a disabled button cannot swallow.
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+  const from = source.indexOf('function pane(side) {')
+  const to = source.indexOf('}, t("parentDir")),')
+  assert.ok(from !== -1 && to > from, 'the up button wiring is locatable in lib/client.js')
+  const pane = source.slice(from, to)
+  assert.match(pane, /const upDisabled = !canGoUp\(path, side, projectPathKey\);/, 'upDisabled is bound to canGoUp')
+  assert.match(pane, /disabled: upDisabled/, 'the up button consumes upDisabled')
+  assert.match(pane, /title: upDisabled \? t\(isLocal \? "parentAtRoot" : "remoteAtRoot"\) : undefined/, 'the hint picks the pane-specific key')
+  assert.match(pane, /ssh-t-btn-wrap/, 'the hint sits on a wrapper the disabled button cannot swallow')
+  assert.match(source, /\.ssh-t-btn:disabled\{[^}]*pointer-events:none/, 'a disabled button lets the wrapper receive hover')
 })
 
 test('client locale dictionaries stay key-symmetric', () => {
