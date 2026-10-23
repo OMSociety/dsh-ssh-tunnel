@@ -162,7 +162,6 @@ cordis.patch.yml        包内 bundle patch，CLI 据此写入 dsh.profile.bundl
 - 如果这个插件对你有帮助，欢迎点亮 Star；有问题或建议请提 [Issue](https://github.com/OMSociety/dsh-ssh-tunnel/issues) 或 [Pull Request](https://github.com/OMSociety/dsh-ssh-tunnel/pulls)。
 - 变更记录见 [CHANGELOG](CHANGELOG.md)。
 - LiveAgent（[thirsty5034/LiveAgent](https://github.com/thirsty5034/LiveAgent)）：产品形态与部分 UX 的参考来源（见上文「参考来源」）
-- [dsh-git-forge](https://github.com/OMSociety/dsh-git-forge)：同门插件，Git 凭据与 push 策略
 - DeepSeek Harness：插件、工具与 agent shell 的宿主
 
 ## 许可证与作者
