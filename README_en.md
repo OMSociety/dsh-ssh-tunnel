@@ -161,7 +161,6 @@ cordis.patch.yml        In-package bundle patch the CLI turns into dsh.profile.b
 - If this plugin helps you, a Star is welcome; questions and suggestions go to [Issues](https://github.com/OMSociety/dsh-ssh-tunnel/issues) or [Pull Requests](https://github.com/OMSociety/dsh-ssh-tunnel/pulls).
 - Changes are recorded in the [CHANGELOG](CHANGELOG.md).
 - LiveAgent ([thirsty5034/LiveAgent](https://github.com/thirsty5034/LiveAgent)): prior art for the product shape and several UX patterns (see "Prior art" above)
-- [dsh-git-forge](https://github.com/OMSociety/dsh-git-forge): sibling plugin for Git credentials and push policy
 - DeepSeek Harness: the host for plugins, tools and agent shells
 
 ## License and author
