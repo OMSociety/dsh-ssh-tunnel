@@ -146,7 +146,6 @@ function clientPathHelpers() {
   const to = source.indexOf('function joinPath(')
   assert.ok(from !== -1 && to > from, 'client path helpers are locatable in lib/client.js')
   const declared = source.slice(from, to)
-  // eslint-disable-next-line no-new-func
   const factory = new Function(`${declared}; return { parentOf, canGoUp, compareForm }`)
   return factory()
 }
