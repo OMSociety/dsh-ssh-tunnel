@@ -16,8 +16,8 @@
 
 | 目的 | 命令 | 什么算通过 |
 |---|---|---|
-| 跑全部自检 | `npm test` | 每用例一行 `ok`（当前 50）+ 末行 `50 passed, 0 skipped, 0 failed`、`all passed` + 退出码 0 |
-| 语法检查加自检 | `npm run check` | `node --check lib/index.js` 无输出，随后同一套自检（当前 50 用例）+ 末行 `all passed` + 退出码 0 |
+| 跑全部自检 | `npm test` | 每用例一行 `ok`（当前 55）+ 末行 `55 passed, 0 skipped, 0 failed`、`all passed` + 退出码 0 |
+| 语法检查加自检 | `npm run check` | `node --check lib/index.js` 无输出，随后同一套自检（当前 55 用例）+ 末行 `all passed` + 退出码 0 |
 | 浏览器产物语法 | `node --check lib/client.js` | 无输出、退出码 0 |
 | 发布前的文件清单自查 | `npm pack --dry-run` | 计数与 `files` 白名单展开一致（当前 30） |
 | 安装计划（bash，不写盘） | `bash scripts/install.sh --profile desktop --dry-run`（本机 profile 是 desktop；自建的换名） | 只打印计划、不写任何文件；`--profile` 必填，缺失或不存在时报错列出实存 profile 并退出 2 |
@@ -51,7 +51,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 - 改 `handleApi` 的 method：客户端 `api("...")` 调用点与之对应（当前 32 个分支，UI 实际调 28 个）。`health`、`migrateDraft`、`sftpReadText`、`sftpWriteText` 属宿主与自检专用，删它们等于删自检。
 - 改游标协议或 API 错误语义：游标协议四处同步（见风险区）；API 错误 body 带结构化 `code`（`bad_request`/`forbidden`/`not_found`/`conflict`/`gone`/`payload_too_large` 对应 400/403/404/409/410/413），客户端的会话终态判定只认 code（`not_found`/`gone`/`forbidden`），不认错误文案——别回退成文案匹配。
 - 改 `lib/client.js`：这个文件是入库产物且没有构建步骤（`dsh plugin add` 只安装不构建），仓库里没有可改的 `src/`；直接改它，改完 `node --check lib/client.js`。挂载侧两层依赖别混：bundle 导出的 `inject = ["locale", "slots"]` 是**服务依赖**（`slots` 由核心提供）；右侧栏服务走延迟注入 `ctx.inject(["sidebarRightTabs", "sidebarRight"], cb)`，服务缺席时静默不挂（不 throw、不拖垮插件）。官方右侧栏三段落齐才出标签页：`tabs.register({ id, kind, priority: "extension", title, guide })`、`ctx.slots.register({ name: "sidebar.right.pane.tab", key: id }, Body)`、`ctx.slots.register({ name: "sidebar.right.pane.tab.title", key: id }, Title)`；Body 的 props 由框架注入（`sessionId` 平铺 + `useTabInfo()` 取 `tab.visible`），`guide` 条目要有 provider 内唯一的 `id`。异步回调是 `ctx.inject` 的常态，别写同步回头检查。
-- 改界面文案：`lib/client.js` 内联的 `zh`/`en` 两份词典必须键集完全对称（当前各 88 键），新增键两侧同时加且确实被 `t("key")` 引用；`locale/zh.json` 与 `locale/en.json` 只放插件列表的 `meta.title`/`meta.description`，两样都要同时进 `exports` 与 `files`。
+- 改界面文案：`lib/client.js` 内联的 `zh`/`en` 两份词典必须键集完全对称（当前各 89 键），新增键两侧同时加且确实被 `t("key")` 引用；`locale/zh.json` 与 `locale/en.json` 只放插件列表的 `meta.title`/`meta.description`，两样都要同时进 `exports` 与 `files`。
 - 改本地路径处理：`lib/shared/path.js` 是词法加 realpath 的双层校验，含分隔符统一与 Windows 大小写折叠。新增用例至少覆盖：盘符根、`..`、符号链接指向根外、以及拿不到显式 root 的情形。
 - 改兼容范围（`engines.dsh` 与 `@deepseek-ai/dsh-*` 的 peer）：每个预发布元组单列一段，形如 `">=0.2.0-rc.2 <0.3.0-0"`，上界必须带 `-0`。原因：DSH 的兼容闸带 `includePrerelease`，而 npm/pnpm 解析 peer 不带——单段大区间对预发布判 `false`（`satisfies("0.2.0-rc.2", ">=0.1.7-rc.2 <0.3.0-0")` 实测为 false）。
 - 发版：`package.json` 的 `version`、CHANGELOG 顶部条目、附注 tag（`git tag -a`）、npm 发布、两份 README 的 `@x.y.z` 安装示例，五处必须同版本收口。打 tag、`git push` 与 `npm publish` 由用户执行，Agent 只准备改动并列出待执行命令。文档改动留在 HEAD 而未 bump 时，CHANGELOG 补 `## [Unreleased]` 段。
