@@ -16,8 +16,8 @@
 
 | 目的 | 命令 | 什么算通过 |
 |---|---|---|
-| 跑全部自检 | `npm test` | 每用例一行 `ok`（当前 56）+ 末行 `56 passed, 0 skipped, 0 failed`、`all passed` + 退出码 0 |
-| 语法检查加自检 | `npm run check` | `node --check lib/index.js` 无输出，随后同一套自检（当前 56 用例）+ 末行 `all passed` + 退出码 0 |
+| 跑全部自检 | `npm test` | 每用例一行 `ok`（当前 58）+ 末行 `58 passed, 0 skipped, 0 failed`、`all passed` + 退出码 0 |
+| 语法检查加自检 | `npm run check` | `node --check lib/index.js` 无输出，随后同一套自检（当前 58 用例）+ 末行 `all passed` + 退出码 0 |
 | 浏览器产物语法 | `node --check lib/client.js` | 无输出、退出码 0 |
 | 发布前的文件清单自查 | `npm pack --dry-run` | 计数与 `files` 白名单展开一致（当前 30） |
 | 安装计划（bash，不写盘） | `bash scripts/install.sh --profile desktop --dry-run`（本机 profile 是 desktop；自建的换名） | 只打印计划、不写任何文件；`--profile` 必填，缺失或不存在时报错列出实存 profile 并退出 2 |
@@ -42,6 +42,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 ```
 
 - `projectPathKey` 是唯一的租户边界，来源有两条且必须一起看：模型侧从宿主会话头取（服务端权威）；侧栏侧先由 `getProjectContext` 用同一个会话头解析（`sessionCwdOf`，取 `ctx.sessions.get(sessionId).header.cwd`）并回带，后续接口带 `body.projectPathKey` 自报（宿主仍接受 `body.cwd` 作兜底入参，本插件客户端不再传）。
+- API 路由的信任判定是三层链（`lib/index.js` 的 `trustDecision` + `lib/shared/http-trust.js` 的 `apiTrustDecision`）：宿主 `connection` 服务在就以它的 `requestRejection()` 为最终裁决（硬切换，含浏览器会话认证，裸 API 调用会得 401）；缺席退回 `webStartup` 启动参数（`trustedHosts` + 具体 `--host` 裸地址，通配绑定地址永不入列）走自管 `isTrustedRequest`；两者都没有时仅回环。`connection`/`webStartup` 一律 `ctx.get(name, true)` 可选读取——0.2.x 起宿主已移除旧的 `webRuntime` 服务，桌面组成也没有这两个服务，裸读会 throw。
 - 宿主与侧栏之间只有这一条 HTTP 通道；工具分派与 API 分派共用 `lib/shared/` 的纯函数，但 `lib/client.js` 不 import 它们——它是自包含产物。
 - 允许：`lib/index.js` 与 `lib/session.js` 依赖 `lib/shared/`。禁止：`lib/shared/` 反向依赖 `session.js`/`index.js`。原因：shared 是两侧共用且可在无 ssh2、无宿主环境下被自检直接导入的层，反向依赖会让自检跑不起来。
 

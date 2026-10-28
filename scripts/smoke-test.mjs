@@ -45,7 +45,13 @@ import {
   kbiUnsupportedError,
 } from '../lib/shared/session-policy.js'
 import { createSessionRegistry } from '../lib/session.js'
-import { isLoopbackHostname, isTrustedRequest } from '../lib/shared/http-trust.js'
+import {
+  isLoopbackHostname,
+  isTrustedRequest,
+  isWildcardHost,
+  trustedHostsFromStartup,
+  apiTrustDecision,
+} from '../lib/shared/http-trust.js'
 import {
   findExistingHostByEndpoint,
   readJsonFile,
@@ -335,6 +341,55 @@ test('http-trust: 0.0.0.0 is not loopback; evil Origin is rejected', () => {
   assert.equal(isTrustedRequest(csrf, []), false)
   const sameOrigin = { headers: { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:3080' } }
   assert.equal(isTrustedRequest(sameOrigin, []), true)
+})
+
+test('http-trust: wildcard detection and startup trust list', () => {
+  assert.equal(isWildcardHost('0.0.0.0'), true)
+  assert.equal(isWildcardHost('::'), true)
+  assert.equal(isWildcardHost('[::]'), true)
+  assert.equal(isWildcardHost('192.0.2.10'), false)
+  assert.equal(isWildcardHost(''), false)
+  assert.deepEqual(trustedHostsFromStartup(undefined), [])
+  assert.deepEqual(trustedHostsFromStartup({}), [])
+  assert.deepEqual(trustedHostsFromStartup({ trustedHosts: ['app.example'] }), ['app.example'])
+  // Concrete --host enters port-less; wildcard never does; no duplicates.
+  assert.deepEqual(trustedHostsFromStartup({ host: '192.0.2.10', port: 3092 }), ['192.0.2.10'])
+  assert.deepEqual(trustedHostsFromStartup({ host: '0.0.0.0' }), [])
+  assert.deepEqual(
+    trustedHostsFromStartup({ host: '192.0.2.10', trustedHosts: ['192.0.2.10', 'app.example'] }),
+    ['192.0.2.10', 'app.example'],
+  )
+})
+
+test('http-trust: apiTrustDecision chain (connection > webStartup > loopback)', () => {
+  const lanReq = { headers: { host: '192.0.2.10:3092' } }
+  const loopReq = { headers: { host: '127.0.0.1:3092' } }
+  // connection present: its verdict is final, webStartup never consulted.
+  const allowConn = { requestRejection: () => undefined }
+  assert.deepEqual(apiTrustDecision(lanReq, { connection: allowConn }), { allowed: true, status: 200 })
+  const denyConn = { requestRejection: () => 401 }
+  assert.deepEqual(apiTrustDecision(loopReq, { connection: denyConn, webStartup: { host: '192.0.2.10' } }), {
+    allowed: false,
+    status: 401,
+  })
+  const weirdConn = { requestRejection: () => 418 }
+  assert.deepEqual(apiTrustDecision(loopReq, { connection: weirdConn }), { allowed: false, status: 403 })
+  // A connection-shaped object without the method is not the service.
+  assert.deepEqual(apiTrustDecision(lanReq, { connection: {}, webStartup: { host: '192.0.2.10' } }), {
+    allowed: true,
+    status: 200,
+  })
+  // webStartup fallback: LAN host passes, strangers do not; loopback always passes.
+  const startup = { host: '192.0.2.10', port: 3092, trustedHosts: [] }
+  assert.deepEqual(apiTrustDecision(lanReq, { webStartup: startup }), { allowed: true, status: 200 })
+  assert.deepEqual(
+    apiTrustDecision({ headers: { host: '203.0.113.9:3092' } }, { webStartup: startup }),
+    { allowed: false, status: 403 },
+  )
+  assert.deepEqual(apiTrustDecision(loopReq, { webStartup: {} }), { allowed: true, status: 200 })
+  // Neither service (desktop): loopback only, regression-free.
+  assert.deepEqual(apiTrustDecision(lanReq, {}), { allowed: false, status: 403 })
+  assert.deepEqual(apiTrustDecision(loopReq, {}), { allowed: true, status: 200 })
 })
 
 test('constrainToWorkspace rejects outbound symlink', () => {

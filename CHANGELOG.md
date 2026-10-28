@@ -10,6 +10,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-10-28
+
+### 修复
+
+- **DSH 0.2.x 的 web profile 下插件 API 整页 403。** 宿主自 0.2.x 起不再提供 `webRuntime` 服务，插件的信任列表读取随之恒为空，于是 `dsh web --host <局域网地址>` 的访问全被 Host 头检查拦下（[#7](https://github.com/OMSociety/dsh-ssh-tunnel/issues/7)）。现在信任判定改为三层链条：web profile 的 `connection` 服务在线时以它的 `requestRejection()` 为最终裁决（宿主自身的 Host/Origin 围栏 + 浏览器会话认证，无 Cookie 的裸 API 调用会得到 401 而非 403）；该服务缺席时退回 `webStartup` 的启动参数（`--trusted-host` 列表加上具体的 `--host` 绑定地址，通配绑定地址永远不会被列入）；两者都没有时维持仅回环。桌面版行为不变。
+
+### Fixed
+
+- **The plugin API answered 403 for every request under DSH 0.2.x web profiles.** The host no longer provides the `webRuntime` service since 0.2.x, so the plugin's trusted-host list read came back empty and every `dsh web --host <LAN address>` visit failed the Host-header check ([#7](https://github.com/OMSociety/dsh-ssh-tunnel/issues/7)). The trust decision is now a three-step chain: when the web profile's `connection` service is live, its `requestRejection()` is the final verdict (the host's own Host/Origin fence plus browser-session authentication — bare API calls without the session Cookie get a 401 instead of a 403); without it, the `webStartup` launch flags feed the self-managed check (the `--trusted-host` list plus a concrete `--host` bind address; wildcard bind addresses are never listed); with neither, loopback-only behavior is unchanged. Desktop behavior is unchanged.
+
 ## [1.2.0] - 2026-10-23
 
 ### 修复

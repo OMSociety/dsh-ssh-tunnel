@@ -106,7 +106,7 @@ One sidebar tab with three pages:
 
 ## Security
 
-**Trust boundary (stated as it is)**: the plugin's HTTP API is served by the DSH host's local web server and only accepts loopback (`localhost` / `127.0.0.1` / `::1`) plus configured trusted hosts, with the browser `Origin` checked; the API has no authentication token — **any local process that can reach the port is treated as an authorized user** and may use the plugin's capabilities. Session APIs require `projectPathKey` and are invisible across projects.
+**Trust boundary (stated as it is)**: the plugin's HTTP API is served by the DSH host's web server, and the trust decision follows the host composition in three layers: under a web profile the host's `connection` service is the final verdict (the host's own Host/Origin fence plus browser-session authentication); without it, the plugin runs its self-managed check against the `webStartup` launch flags (the `--trusted-host` list plus a concrete `--host` bind address, with the browser `Origin` checked); with neither, only loopback (`localhost` / `127.0.0.1` / `::1`) is accepted. The plugin API has no authentication token of its own — **in compositions without a `connection` service, such as the desktop app, any local process that can reach the port is treated as an authorized user** and may use the plugin's capabilities. Session APIs require `projectPathKey` and are invisible across projects.
 
 Authorization and path-guard action list:
 
