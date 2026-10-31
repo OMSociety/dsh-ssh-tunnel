@@ -10,6 +10,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-11-01
+
+### 修复
+
+- **插件停用后已建立的 SSH 会话失去属主。** 会话注册表是模块级单例，`apply()` 只登记路由与工具，没有收回入口：禁用或热替换插件之后，`ssh2` 连接与它的 keepalive 仍在跑，面板却已经不在了。`lib/session.js` 新增 `closeAll()`（逐个以 `force` 走既有的 `closeSession`，单个失败不阻断其余），`apply()` 末尾以 `ctx.effect` 在卸载时调用它。
+
+### Fixed
+
+- **Live SSH sessions were left ownerless when the plugin was disabled.** The session registry is a module-level singleton and `apply()` only registered routes and the tool, with nothing to take them back: after a disable or a hot swap the `ssh2` connections and their keepalives kept running while the panel was already gone. `lib/session.js` gains `closeAll()`, which walks the registry through the existing `closeSession` with `force` (one failure does not stop the rest), and `apply()` calls it from a `ctx.effect` cleanup on unload.
+
 ## [1.2.1] - 2026-10-28
 
 ### 修复
