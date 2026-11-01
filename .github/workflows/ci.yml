@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # 仓库不入库锁文件，安装走 npm install
+      - name: 安装依赖
+        run: npm install --no-audit --no-fund
+
+      - name: 冒烟测试
+        run: npm test
