@@ -25,3 +25,6 @@ jobs:
 
       - name: 冒烟测试
         run: npm test
+
+      - name: 发布物清单
+        run: npm run check:pack

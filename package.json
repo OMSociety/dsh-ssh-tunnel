@@ -45,7 +45,8 @@
   },
   "scripts": {
     "test": "node scripts/smoke-test.mjs",
-    "check": "node --check lib/index.js && node scripts/smoke-test.mjs"
+    "check": "node --check lib/index.js && node scripts/smoke-test.mjs",
+    "check:pack": "node scripts/check-pack.mjs"
   },
   "dsh": {
     "manifestVersion": 1,
