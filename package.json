@@ -32,7 +32,7 @@
   ],
   "engines": {
     "node": ">=20",
-    "dsh": ">=0.2.0-rc.2 <0.3.0-0"
+    "dsh": ">=0.2.0-rc.2 <0.2.1-0 || >=0.2.1-rc.1 <0.3.0-0"
   },
   "main": "lib/index.js",
   "icon": "./icon.svg",
@@ -67,8 +67,16 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.4",
-    "@deepseek-ai/dsh-client-locale": ">=0.2.0-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-sidebar-right": ">=0.2.0-rc.2 <0.3.0-0"
+    "@deepseek-ai/dsh-client-locale": ">=0.2.0-rc.2 <0.2.1-0 || >=0.2.1-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-sidebar-right": ">=0.2.0-rc.2 <0.2.1-0 || >=0.2.1-rc.1 <0.3.0-0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-client-locale": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-sidebar-right": {
+      "optional": true
+    }
   },
   "files": [
     "CHANGELOG.md",
