@@ -1,7 +1,7 @@
 # AGENTS.md — dsh-ssh-tunnel Agent 宪法
 
 适用范围：本仓库全部目录。
-最后更新：2026-10-09
+最后更新：2026-11-01
 
 ## 项目概览
 
@@ -20,8 +20,8 @@
 | 语法检查加自检 | `npm run check` | `node --check lib/index.js` 无输出，随后同一套自检（当前 58 用例）+ 末行 `all passed` + 退出码 0 |
 | 浏览器产物语法 | `node --check lib/client.js` | 无输出、退出码 0 |
 | 发布前的文件清单自查 | `npm pack --dry-run` | 计数与 `files` 白名单展开一致（当前 30） |
-| 安装计划（bash，不写盘） | `bash scripts/install.sh --profile desktop --dry-run`（本机 profile 是 desktop；自建的换名） | 只打印计划、不写任何文件；`--profile` 必填，缺失或不存在时报错列出实存 profile 并退出 2 |
-| 安装计划（PowerShell，不写盘） | `pwsh -File scripts/install.ps1 -Profile desktop -DryRun` | 只打印计划、不写任何文件；`-Profile` 必填，写成 `--dry-run` 会被当作未知参数拒绝并退出 2 |
+| 安装计划（bash，不写盘） | `bash scripts/install.sh --profile <profile> --dry-run`（profile 名以 `~/.dsh/profiles` 下实际目录为准） | 只打印计划、不写任何文件；`--profile` 必填，缺失或不存在时报错列出实存 profile 并退出 2 |
+| 安装计划（PowerShell，不写盘） | `pwsh -File scripts/install.ps1 -Profile <profile> -DryRun` | 只打印计划、不写任何文件；`-Profile` 必填，写成 `--dry-run` 会被当作未知参数拒绝并退出 2 |
 
 ```bash
 npm test
@@ -58,7 +58,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 - 发版：`package.json` 的 `version`、CHANGELOG 顶部条目、附注 tag（`git tag -a`）、npm 发布、两份 README 的 `@x.y.z` 安装示例，五处必须同版本收口。打 tag、`git push` 与 `npm publish` 由用户执行，Agent 只准备改动并列出待执行命令。文档改动留在 HEAD 而未 bump 时，CHANGELOG 补 `## [Unreleased]` 段。
 - 改依赖：`@xterm/*` 两件保持精确版本（README 对它们有「钉死」表述）；`ssh2` 是 `^` 浮动。`package-lock.json` 被 `.gitignore` 排除，不要提交锁文件来「提高复现性」。
 - 改安装链逻辑：bash 与 PowerShell 两侧共用的逻辑只放 `scripts/lib/*.cjs`（`ws-exclude`/`bundle-check`/`strip-mount`）单源，两侧经 node 调用；别在脚本里重新内联 JS。这三个文件在 `files` 白名单里，改名或删除会同时打断两条安装链，改动必须两侧伪 home 夹具复验。
-- 本节与下文凡「当前 N 个」都是 2026-10-09 的快照数，改动后按这些命令现数：动作数 `grep -o "action === '[^']*'" lib/index.js | sort -u | wc -l`（别用 `[a-z_]*` 形参——本机 git-bash 的 grep 实测会截断匹配，只回 4 个）、method 分支数 `grep -cE "method === '" lib/index.js`（再减去 `serveVendor` 里的那一处）、UI 调用点 `grep -o 'api("[A-Za-z]*"' lib/client.js | sort -u | wc -l`、词典键数在 `lib/client.js` 的 `zh`/`en` 两个字面量里数键名冒号、包内文件数 `npm pack --dry-run` 的末行。
+- 本节与下文凡「当前 N 个」都是 2026-10-09 的快照数，改动后按这些命令现数：动作数 `grep -o "action === '[^']*'" lib/index.js | sort -u | wc -l`（别用 `[a-z_]*` 形参——git-bash 的 grep 会截断匹配）、method 分支数 `grep -cE "method === '" lib/index.js`（再减去 `serveVendor` 里的那一处）、UI 调用点 `grep -o 'api("[A-Za-z]*"' lib/client.js | sort -u | wc -l`、词典键数在 `lib/client.js` 的 `zh`/`en` 两个字面量里数键名冒号、包内文件数 `npm pack --dry-run` 的末行。
 
 ## 禁止操作
 
@@ -101,7 +101,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 |---|---|
 | `dsh: skipping profile bundle "dsh-ssh-tunnel"` | 先核 `dsh --version` 与 `engines.dsh`/peer 区间是否覆盖该预发布元组，预发布要单列段（本包现声明 `>=0.2.0-rc.2 <0.3.0-0`，仅覆盖 0.2.0 线） |
 | `Failed to parse pnpm-workspace.yaml` 或 `can not read a block mapping entry` | 1.0.1 的 install.sh 曾追加出字面 `\n` 垃圾行；现已写后回读断言、失败回滚。遇到历史遗留的坏行仍要手工删掉那一行，别再重复跑同一脚本 |
-| `找不到 profile 目录` / `Profile dir missing` | 本机 profile 是 `desktop`（不是 `web`） |
+| `找不到 profile 目录` / `Profile dir missing` | 传入的 profile 名不存在；以 `~/.dsh/profiles` 下实际目录为准 |
 | `dsh: installation rejected: ... incompatible with dsh` | 版本闸拒绝，按宿主给的 allow-version 豁免流程走，别改区间来绕过 |
 | 装好了但侧栏没有入口 | 刷新浏览器页面；官方右侧栏的标签页不自动常驻，入口在标签条「+」的引导页里；开 DevTools Console 看注册期异常（宿主侧一声不吭） |
 | `未找到 dsh（可用 DSH_CMD 指定）` | git-bash 不解析 `.cmd`，在那里要写 `dsh.cmd`，或用 `DSH_CMD` 指到内嵌 CLI |
