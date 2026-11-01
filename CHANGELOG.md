@@ -10,6 +10,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 修复
+
+- **右侧栏页签没声明槽位属主包。** `dsh.client.inject` 此前只含 `@deepseek-ai/dsh-client-locale`，而 `lib/client.js` 注册的是 `sidebar.right.pane.tab` 与 `.title`，属主为 `@deepseek-ai/dsh-client-ui-sidebar-right`；缺的是包到包的到达顺序边。现补上。
+
+### Fixed
+
+- **The sidebar tab did not declare its slot owner.** `dsh.client.inject` listed only `@deepseek-ai/dsh-client-locale` while `lib/client.js` registers `sidebar.right.pane.tab` and `.title`, owned by `@deepseek-ai/dsh-client-ui-sidebar-right`; the package-to-package ordering edge was missing. Now declared.
+
 ## [1.2.2] - 2026-11-01
 
 ### 修复
