@@ -8,7 +8,7 @@
 
   <p>
     <a href="https://www.npmjs.com/package/dsh-ssh-tunnel"><img src="https://img.shields.io/npm/v/dsh-ssh-tunnel?label=version&color=4f6ef7" alt="Version"></a>
-    <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.0--rc.2%20%3C0.3.0--0-4f6ef7" alt="DSH">
+    <img src="https://img.shields.io/badge/DSH-DeepSeek%20Harness-4D6BFE" alt="DSH">
     <a href="LICENSE"><img src="https://img.shields.io/github/license/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="License"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/stargazers"><img src="https://img.shields.io/github/stars/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Stars"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/issues"><img src="https://img.shields.io/github/issues/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Issues"></a>
