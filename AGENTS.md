@@ -55,7 +55,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 - 改界面文案：`lib/client.js` 内联的 `zh`/`en` 两份词典必须键集完全对称（当前各 90 键），新增键两侧同时加且确实被 `t("key")` 引用；`locale/zh.json` 与 `locale/en.json` 只放插件列表的 `meta.title`/`meta.description`，两样都要同时进 `exports` 与 `files`。
 - 改本地路径处理：`lib/shared/path.js` 是词法加 realpath 的双层校验，含分隔符统一与 Windows 大小写折叠。新增用例至少覆盖：盘符根、`..`、符号链接指向根外、以及拿不到显式 root 的情形。
 - 宿主版本声明：`package.json` 不写 `engines.dsh`，也不列 `@deepseek-ai/*` peer。宿主每出一条新预发布线，显式区间就要补一段，漏了就变成安装硬拒；不声明则安装端不做版本校验。
-- 发版：`package.json` 的 `version`、CHANGELOG 顶部条目、附注 tag（`git tag -a`）、npm 发布、两份 README 的 `@x.y.z` 安装示例，五处必须同版本收口。打 tag、`git push` 与 `npm publish` 由用户执行，Agent 只准备改动并列出待执行命令。文档改动留在 HEAD 而未 bump 时，CHANGELOG 补 `## [Unreleased]` 段。
+- 发版：`package.json` 的 `version`、CHANGELOG 顶部条目、附注 tag（`git tag -a`）、npm 发布、两份 README 的 `@x.y.z` 安装示例，五处必须同版本收口。文档改动留在 HEAD 而未 bump 时，CHANGELOG 补 `## [Unreleased]` 段。
 - 改依赖：`@xterm/*` 两件保持精确版本（README 对它们有「钉死」表述）；`ssh2` 是 `^` 浮动。`package-lock.json` 被 `.gitignore` 排除，不要提交锁文件来「提高复现性」。
 - 改安装链逻辑：bash 与 PowerShell 两侧共用的逻辑只放 `scripts/lib/*.cjs`（`ws-exclude`/`bundle-check`/`strip-mount`）单源，两侧经 node 调用；别在脚本里重新内联 JS。这三个文件在 `files` 白名单里，改名或删除会同时打断两条安装链，改动必须两侧伪 home 夹具复验。
 - 本节与下文凡「当前 N 个」都是 2026-11-22 的快照数，改动后按这些命令现数：动作数 `grep -o "action === '[^']*'" lib/index.js | sort -u | wc -l`（别用 `[a-z_]*` 形参——git-bash 的 grep 会截断匹配）、method 分支数 `grep -cE "method === '" lib/index.js`（再减去 `createVendorHandler` 里的那一处）、UI 调用点 `grep -o 'api("[A-Za-z]*"' lib/client.js | sort -u | wc -l`、词典键数在 `lib/client.js` 的 `zh`/`en` 两个字面量里数键名冒号、包内文件数 `npm pack --dry-run` 的末行。
