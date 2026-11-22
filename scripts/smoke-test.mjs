@@ -46,13 +46,6 @@ import {
 } from '../lib/shared/session-policy.js'
 import { createSessionRegistry } from '../lib/session.js'
 import {
-  isLoopbackHostname,
-  isTrustedRequest,
-  isWildcardHost,
-  trustedHostsFromStartup,
-  apiTrustDecision,
-} from '../lib/shared/http-trust.js'
-import {
   findExistingHostByEndpoint,
   readJsonFile,
   writeJsonAtomic,
@@ -81,6 +74,8 @@ function makeTempDir(prefix) {
 }
 const WS_ROOT = makeTempDir('dsh-ssh-ws')
 process.env.DSH_SSH_TUNNEL_WORKSPACE_ROOT = WS_ROOT
+process.env.DSH_HOME = makeTempDir('dsh-ssh-home')
+const { createApiHandler, createVendorHandler, inject } = await import('../lib/index.js')
 const wsPath = (...segs) => normalizeProjectKey(join(WS_ROOT, ...segs))
 const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -329,67 +324,153 @@ test('persist: corrupt json throws; atomic write replaces', () => {
   ), undefined)
 })
 
-test('http-trust: 0.0.0.0 is not loopback; evil Origin is rejected', () => {
-  assert.equal(isLoopbackHostname('127.0.0.1'), true)
-  assert.equal(isLoopbackHostname('::1'), true)
-  assert.equal(isLoopbackHostname('0.0.0.0'), false)
-  const loopReq = { headers: { host: '127.0.0.1:3080' } }
-  assert.equal(isTrustedRequest(loopReq, []), true)
-  const zeroReq = { headers: { host: '0.0.0.0:3080' } }
-  assert.equal(isTrustedRequest(zeroReq, []), false)
-  const csrf = { headers: { host: '127.0.0.1:3080', origin: 'http://evil.example' } }
-  assert.equal(isTrustedRequest(csrf, []), false)
-  const sameOrigin = { headers: { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:3080' } }
-  assert.equal(isTrustedRequest(sameOrigin, []), true)
+function mockHttpResponse() {
+  return {
+    statusCode: 200,
+    headers: {},
+    body: Buffer.alloc(0),
+    ended: false,
+    setHeader(name, value) {
+      this.headers[name.toLowerCase()] = value
+    },
+    writeHead(status) {
+      this.statusCode = status
+    },
+    end(chunk) {
+      if (chunk !== undefined) {
+        this.body = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk))
+      }
+      this.ended = true
+    },
+  }
+}
+
+function unparsedRequest(method) {
+  return {
+    method,
+    get url() {
+      throw new Error('rejected request reached URL parsing')
+    },
+    async *[Symbol.asyncIterator]() {
+      throw new Error('rejected request reached body reading')
+    },
+  }
+}
+
+for (const status of [401, 403]) {
+  test(`http route: API ${status} stops before URL, body and dispatch`, async () => {
+    const events = []
+    const req = unparsedRequest('POST')
+    const res = mockHttpResponse()
+    const ctx = {
+      connection: {
+        requestRejection(request) {
+          assert.equal(request, req)
+          events.push('connection')
+          return status
+        },
+      },
+    }
+    const handler = createApiHandler(ctx, {
+      readBody: async () => events.push('readBody'),
+      dispatch: async () => events.push('dispatch'),
+    })
+    await handler(req, res)
+    assert.equal(res.statusCode, status)
+    assert.equal(res.ended, true)
+    assert.equal(res.body.length, 0)
+    assert.deepEqual(events, ['connection'])
+  })
+
+  test(`http route: vendor ${status} stops before URL, resolution and file read`, async () => {
+    const events = []
+    const req = unparsedRequest('GET')
+    const res = mockHttpResponse()
+    const ctx = {
+      connection: {
+        requestRejection(request) {
+          assert.equal(request, req)
+          events.push('connection')
+          return status
+        },
+      },
+    }
+    const handler = createVendorHandler(ctx, {
+      resolveAsset: () => events.push('resolveAsset'),
+      readFile: () => events.push('readFile'),
+    })
+    await handler(req, res)
+    assert.equal(res.statusCode, status)
+    assert.equal(res.ended, true)
+    assert.equal(res.body.length, 0)
+    assert.deepEqual(events, ['connection'])
+  })
+}
+
+test('http route: allowed API request reaches real body parsing and health dispatch', async () => {
+  assert.ok(inject.includes('connection'))
+  const events = []
+  const req = {
+    method: 'POST',
+    url: '/dsh-ssh-tunnel/api/health',
+    async *[Symbol.asyncIterator]() {
+      events.push('readBody')
+      yield Buffer.from('{}')
+    },
+  }
+  const res = mockHttpResponse()
+  const ctx = {
+    connection: {
+      requestRejection(request) {
+        assert.equal(request, req)
+        events.push('connection')
+        return undefined
+      },
+    },
+  }
+  await createApiHandler(ctx)(req, res)
+  assert.equal(res.statusCode, 200)
+  assert.equal(res.ended, true)
+  assert.deepEqual(events, ['connection', 'readBody'])
+  const payload = JSON.parse(res.body.toString('utf8'))
+  assert.equal(payload.ok, true)
+  assert.equal(payload.name, 'dsh-ssh-tunnel')
 })
 
-test('http-trust: wildcard detection and startup trust list', () => {
-  assert.equal(isWildcardHost('0.0.0.0'), true)
-  assert.equal(isWildcardHost('::'), true)
-  assert.equal(isWildcardHost('[::]'), true)
-  assert.equal(isWildcardHost('192.0.2.10'), false)
-  assert.equal(isWildcardHost(''), false)
-  assert.deepEqual(trustedHostsFromStartup(undefined), [])
-  assert.deepEqual(trustedHostsFromStartup({}), [])
-  assert.deepEqual(trustedHostsFromStartup({ trustedHosts: ['app.example'] }), ['app.example'])
-  // Concrete --host enters port-less; wildcard never does; no duplicates.
-  assert.deepEqual(trustedHostsFromStartup({ host: '192.0.2.10', port: 3092 }), ['192.0.2.10'])
-  assert.deepEqual(trustedHostsFromStartup({ host: '0.0.0.0' }), [])
-  assert.deepEqual(
-    trustedHostsFromStartup({ host: '192.0.2.10', trustedHosts: ['192.0.2.10', 'app.example'] }),
-    ['192.0.2.10', 'app.example'],
-  )
-})
-
-test('http-trust: apiTrustDecision chain (connection > webStartup > loopback)', () => {
-  const lanReq = { headers: { host: '192.0.2.10:3092' } }
-  const loopReq = { headers: { host: '127.0.0.1:3092' } }
-  // connection present: its verdict is final, webStartup never consulted.
-  const allowConn = { requestRejection: () => undefined }
-  assert.deepEqual(apiTrustDecision(lanReq, { connection: allowConn }), { allowed: true, status: 200 })
-  const denyConn = { requestRejection: () => 401 }
-  assert.deepEqual(apiTrustDecision(loopReq, { connection: denyConn, webStartup: { host: '192.0.2.10' } }), {
-    allowed: false,
-    status: 401,
+test('http route: allowed vendor request resolves and reads its asset', async () => {
+  const dir = makeTempDir('dsh-ssh-vendor-route')
+  const filePath = join(dir, 'asset.txt')
+  writeFileSync(filePath, 'vendor fixture')
+  const events = []
+  const req = { method: 'GET', url: '/dsh-ssh-tunnel/vendor/xterm.js' }
+  const res = mockHttpResponse()
+  const ctx = {
+    connection: {
+      requestRejection(request) {
+        assert.equal(request, req)
+        events.push('connection')
+        return undefined
+      },
+    },
+  }
+  const handler = createVendorHandler(ctx, {
+    resolveAsset(name) {
+      assert.equal(name, 'xterm.js')
+      events.push('resolveAsset')
+      return { path: filePath, type: 'text/plain; charset=utf-8' }
+    },
+    readFile(path) {
+      assert.equal(path, filePath)
+      events.push('readFile')
+      return readFileSync(path)
+    },
   })
-  const weirdConn = { requestRejection: () => 418 }
-  assert.deepEqual(apiTrustDecision(loopReq, { connection: weirdConn }), { allowed: false, status: 403 })
-  // A connection-shaped object without the method is not the service.
-  assert.deepEqual(apiTrustDecision(lanReq, { connection: {}, webStartup: { host: '192.0.2.10' } }), {
-    allowed: true,
-    status: 200,
-  })
-  // webStartup fallback: LAN host passes, strangers do not; loopback always passes.
-  const startup = { host: '192.0.2.10', port: 3092, trustedHosts: [] }
-  assert.deepEqual(apiTrustDecision(lanReq, { webStartup: startup }), { allowed: true, status: 200 })
-  assert.deepEqual(
-    apiTrustDecision({ headers: { host: '203.0.113.9:3092' } }, { webStartup: startup }),
-    { allowed: false, status: 403 },
-  )
-  assert.deepEqual(apiTrustDecision(loopReq, { webStartup: {} }), { allowed: true, status: 200 })
-  // Neither service (desktop): loopback only, regression-free.
-  assert.deepEqual(apiTrustDecision(lanReq, {}), { allowed: false, status: 403 })
-  assert.deepEqual(apiTrustDecision(loopReq, {}), { allowed: true, status: 200 })
+  await handler(req, res)
+  assert.equal(res.statusCode, 200)
+  assert.equal(res.ended, true)
+  assert.equal(res.body.toString('utf8'), 'vendor fixture')
+  assert.equal(res.headers['content-type'], 'text/plain; charset=utf-8')
+  assert.deepEqual(events, ['connection', 'resolveAsset', 'readFile'])
 })
 
 test('constrainToWorkspace rejects outbound symlink', () => {

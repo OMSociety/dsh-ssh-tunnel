@@ -61,7 +61,7 @@
 
 ```powershell
 # 先停掉正在运行的 DSH（运行中的服务会锁住依赖，装完再起）
-dsh plugin --profile <profile> add "dsh-ssh-tunnel"
+dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.2.4"
 ```
 
 > **提示**：装好后**刷新一下浏览器页面**，「SSH 隧道」入口才会出现在右侧栏——只重启宿主不够，客户端产物是页面加载时取的。
@@ -107,7 +107,7 @@ dsh plugin --profile <profile> add "dsh-ssh-tunnel"
 
 ## 安全
 
-**信任边界（客观陈述）**：插件的 HTTP API 挂在 DSH 宿主的 web 服务上，信任判定按宿主组成分三层：web profile 下优先由宿主 `connection` 服务裁决（宿主自身的 Host/Origin 围栏 + 浏览器会话认证）；该服务缺席时按 `webStartup` 的启动参数自管校验（`--trusted-host` 列表与具体的 `--host` 绑定地址，并校验浏览器 `Origin`）；两者都没有时只接受本机回环（`localhost` / `127.0.0.1` / `::1`）。插件 API 自身没有鉴权 token——**在桌面版等无 `connection` 服务的组成里，能在本机访问该端口的进程都被视为已授权用户**，可以使用本插件的能力。会话 API 必须带 `projectPathKey`，跨项目不可见。
+**信任边界（客观陈述）**：插件的 API 与 vendor 路由都挂在 DSH 宿主的 web 服务上，并将宿主 `connection` 服务声明为硬依赖。每个请求首先由 `connection.requestRejection(req)` 执行宿主的 Host/Origin 围栏与浏览器会话认证；401 / 403 按原状态码立即结束，只有 `undefined` 才进入插件的 URL / 正文解析、文件读取与业务分派。会话 API 必须带 `projectPathKey`，跨项目不可见。
 
 授权与路径守卫动作清单：
 

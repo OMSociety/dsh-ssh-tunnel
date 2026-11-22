@@ -60,7 +60,7 @@ Its companion plugin is [dsh-git-forge](https://github.com/OMSociety/dsh-git-for
 
 ```powershell
 # stop the running DSH first (a live service holds the dependency lock; start it again afterwards)
-dsh plugin --profile <profile> add "dsh-ssh-tunnel"
+dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.2.4"
 ```
 
 > **Note**: After installing, **refresh the browser page** for the "SSH Tunnel" entry to appear in the sidebar — restarting the host alone is not enough, because the client artifact is fetched when the page loads.
@@ -106,7 +106,7 @@ One sidebar tab with three pages:
 
 ## Security
 
-**Trust boundary (stated as it is)**: the plugin's HTTP API is served by the DSH host's web server, and the trust decision follows the host composition in three layers: under a web profile the host's `connection` service is the final verdict (the host's own Host/Origin fence plus browser-session authentication); without it, the plugin runs its self-managed check against the `webStartup` launch flags (the `--trusted-host` list plus a concrete `--host` bind address, with the browser `Origin` checked); with neither, only loopback (`localhost` / `127.0.0.1` / `::1`) is accepted. The plugin API has no authentication token of its own — **in compositions without a `connection` service, such as the desktop app, any local process that can reach the port is treated as an authorized user** and may use the plugin's capabilities. Session APIs require `projectPathKey` and are invisible across projects.
+**Trust boundary (stated as it is)**: the plugin's API and vendor routes are served by the DSH host's web server, and the host `connection` service is a required dependency. Every request first goes through `connection.requestRejection(req)`, which applies the host's Host/Origin fence and browser-session authentication. A 401 or 403 ends the response immediately with the same status; only `undefined` proceeds to plugin URL/body parsing, file reads and business dispatch. Session APIs require `projectPathKey` and are invisible across projects.
 
 Authorization and path-guard action list:
 

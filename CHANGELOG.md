@@ -10,15 +10,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.4] - 2026-11-22
 
 ### 修复
 
 - **右侧栏页签的图标比文字高一两个像素。** 标题席位的内容由宿主放进 chip 自己的 flex 行（`.tabTitle` 为 `display: contents`）；此前标题把 `svg` 与文字一起包在普通行内 `<span>` 里，图标按文本基线对齐。现在标题自带 `inline-flex` 容器并以 `align-items: center` 居中，图标与文字的间距由 `gap` 提供。
+- **HTTP 路由统一经过宿主访问检查。** `connection` 是硬依赖；API 与 vendor 都在 URL 解析、正文读取、静态资源解析与读取、业务分派之前调用 `connection.requestRejection(req)`。401 / 403 按原状态码立即结束，仅 `undefined` 放行；离线回归覆盖两条路由的 401、403 短路与允许路径。
 
 ### Fixed
 
 - **The sidebar tab's icon sat a pixel or two above its label.** The host mounts a title seat into the chip's own flex row (`.tabTitle` is `display: contents`); the title wrapped the svg and its label in a plain inline `<span>`, so the icon aligned on the text baseline. The title now carries an `inline-flex` wrapper centred with `align-items: center`, and the icon-to-label spacing comes from `gap`.
+- **All HTTP routes now pass through the host access check.** `connection` is a required dependency; both API and vendor routes call `connection.requestRejection(req)` before URL parsing, body reads, asset resolution or reads, and business dispatch. A 401 or 403 ends the response immediately with the same status, and only `undefined` allows processing to continue. Offline regressions cover 401, 403 and allowed requests on both routes.
 
 ## [1.2.3] - 2026-11-02
 

@@ -1,7 +1,7 @@
 # AGENTS.md — dsh-ssh-tunnel Agent 宪法
 
 适用范围：本仓库全部目录。
-最后更新：2026-11-01
+最后更新：2026-11-22
 
 ## 项目概览
 
@@ -16,8 +16,8 @@
 
 | 目的 | 命令 | 什么算通过 |
 |---|---|---|
-| 跑全部自检 | `npm test` | 每用例一行 `ok`（当前 58）+ 末行 `58 passed, 0 skipped, 0 failed`、`all passed` + 退出码 0 |
-| 语法检查加自检 | `npm run check` | `node --check lib/index.js` 无输出，随后同一套自检（当前 58 用例）+ 末行 `all passed` + 退出码 0 |
+| 跑全部自检 | `npm test` | 每用例一行 `ok`（当前 61）+ 末行 `61 passed, 0 skipped, 0 failed`、`all passed` + 退出码 0 |
+| 语法检查加自检 | `npm run check` | `node --check lib/index.js` 无输出，随后同一套自检（当前 61 用例）+ 末行 `all passed` + 退出码 0 |
 | 浏览器产物语法 | `node --check lib/client.js` | 无输出、退出码 0 |
 | 发布前的文件清单自查 | `npm pack --dry-run` | 计数与 `files` 白名单展开一致（当前 30） |
 | 安装计划（bash，不写盘） | `bash scripts/install.sh --profile <profile> --dry-run`（profile 名以 `~/.dsh/profiles` 下实际目录为准） | 只打印计划、不写任何文件；`--profile` 必填，缺失或不存在时报错列出实存 profile 并退出 2 |
@@ -42,7 +42,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 ```
 
 - `projectPathKey` 是唯一的租户边界，来源有两条且必须一起看：模型侧从宿主会话头取（服务端权威）；侧栏侧先由 `getProjectContext` 用同一个会话头解析（`sessionCwdOf`，取 `ctx.sessions.get(sessionId).header.cwd`）并回带，后续接口带 `body.projectPathKey` 自报（宿主仍接受 `body.cwd` 作兜底入参，本插件客户端不再传）。
-- API 路由的信任判定是三层链（`lib/index.js` 的 `trustDecision` + `lib/shared/http-trust.js` 的 `apiTrustDecision`）：宿主 `connection` 服务在就以它的 `requestRejection()` 为最终裁决（硬切换，含浏览器会话认证，裸 API 调用会得 401）；缺席退回 `webStartup` 启动参数（`trustedHosts` + 具体 `--host` 裸地址，通配绑定地址永不入列）走自管 `isTrustedRequest`；两者都没有时仅回环。`connection`/`webStartup` 一律 `ctx.get(name, true)` 可选读取——0.2.x 起宿主已移除旧的 `webRuntime` 服务，桌面组成也没有这两个服务，裸读会 throw。
+- API 与 vendor 路由都以宿主 `connection` 服务为硬依赖（列入 `inject`）。`lib/index.js` 的 `createApiHandler` 与 `createVendorHandler` 首先直接调用 `ctx.connection.requestRejection(req)`，由宿主执行 Host/Origin 围栏与浏览器会话认证；401 / 403 按原状态码立即结束，只有 `undefined` 才继续 URL 解析、正文读取、静态资源解析与读取或业务分派。
 - 宿主与侧栏之间只有这一条 HTTP 通道；工具分派与 API 分派共用 `lib/shared/` 的纯函数，但 `lib/client.js` 不 import 它们——它是自包含产物。
 - 允许：`lib/index.js` 与 `lib/session.js` 依赖 `lib/shared/`。禁止：`lib/shared/` 反向依赖 `session.js`/`index.js`。原因：shared 是两侧共用且可在无 ssh2、无宿主环境下被自检直接导入的层，反向依赖会让自检跑不起来。
 
@@ -58,7 +58,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 - 发版：`package.json` 的 `version`、CHANGELOG 顶部条目、附注 tag（`git tag -a`）、npm 发布、两份 README 的 `@x.y.z` 安装示例，五处必须同版本收口。打 tag、`git push` 与 `npm publish` 由用户执行，Agent 只准备改动并列出待执行命令。文档改动留在 HEAD 而未 bump 时，CHANGELOG 补 `## [Unreleased]` 段。
 - 改依赖：`@xterm/*` 两件保持精确版本（README 对它们有「钉死」表述）；`ssh2` 是 `^` 浮动。`package-lock.json` 被 `.gitignore` 排除，不要提交锁文件来「提高复现性」。
 - 改安装链逻辑：bash 与 PowerShell 两侧共用的逻辑只放 `scripts/lib/*.cjs`（`ws-exclude`/`bundle-check`/`strip-mount`）单源，两侧经 node 调用；别在脚本里重新内联 JS。这三个文件在 `files` 白名单里，改名或删除会同时打断两条安装链，改动必须两侧伪 home 夹具复验。
-- 本节与下文凡「当前 N 个」都是 2026-10-09 的快照数，改动后按这些命令现数：动作数 `grep -o "action === '[^']*'" lib/index.js | sort -u | wc -l`（别用 `[a-z_]*` 形参——git-bash 的 grep 会截断匹配）、method 分支数 `grep -cE "method === '" lib/index.js`（再减去 `serveVendor` 里的那一处）、UI 调用点 `grep -o 'api("[A-Za-z]*"' lib/client.js | sort -u | wc -l`、词典键数在 `lib/client.js` 的 `zh`/`en` 两个字面量里数键名冒号、包内文件数 `npm pack --dry-run` 的末行。
+- 本节与下文凡「当前 N 个」都是 2026-11-22 的快照数，改动后按这些命令现数：动作数 `grep -o "action === '[^']*'" lib/index.js | sort -u | wc -l`（别用 `[a-z_]*` 形参——git-bash 的 grep 会截断匹配）、method 分支数 `grep -cE "method === '" lib/index.js`（再减去 `createVendorHandler` 里的那一处）、UI 调用点 `grep -o 'api("[A-Za-z]*"' lib/client.js | sort -u | wc -l`、词典键数在 `lib/client.js` 的 `zh`/`en` 两个字面量里数键名冒号、包内文件数 `npm pack --dry-run` 的末行。
 
 ## 禁止操作
 
