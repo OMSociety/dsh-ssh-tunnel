@@ -8,7 +8,7 @@
 - 一句话定位：DeepSeek Harness（DSH）的社区插件——SSH 主机库 + 按项目授权 + 侧栏终端与双栏 SFTP，并通过 `SSHManager` 工具把远端能力暴露给模型。
 - 运行时：Node >= 20、纯 JavaScript、ESM（`"type": "module"`）。浏览器半侧是自包含 bundle，宿主半侧无构建步骤。
 - 直接依赖：`ssh2`（`^1.17.0`，浮动）、`@xterm/xterm@5.5.0`、`@xterm/addon-fit@0.11.0`（精确钉版）。
-- 宿主契约：不声明宿主版本要求（无 `engines.dsh`、无 `@deepseek-ai/*` peer），宿主包由 DSH 运行时提供。
+- 宿主契约：宿主包由 DSH 运行时提供。
 - 没有 TypeScript、没有 lint/format/类型检查配置、没有 CI 目录：代码风格与正确性只靠上面两条命令加人工把关，无工具兜底。
 - 文档索引：[README.md](./README.md) 与 [README_en.md](./README_en.md)（逐节对应）、[CHANGELOG.md](./CHANGELOG.md)（中英并列段，Keep a Changelog + SemVer）、[package.json](./package.json)。
 
@@ -54,7 +54,6 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 - 改 `lib/client.js`：这个文件是入库产物且没有构建步骤（`dsh plugin add` 只安装不构建），仓库里没有可改的 `src/`；直接改它，改完 `node --check lib/client.js`。挂载侧两层依赖别混：bundle 导出的 `inject = ["locale", "slots"]` 是**服务依赖**（`slots` 由核心提供）；右侧栏服务走延迟注入 `ctx.inject(["sidebarRightTabs", "sidebarRight"], cb)`，服务缺席时静默不挂（不 throw、不拖垮插件）。官方右侧栏三段落齐才出标签页：`tabs.register({ id, kind, priority: "extension", title, guide })`、`ctx.slots.register({ name: "sidebar.right.pane.tab", key: id }, Body)`、`ctx.slots.register({ name: "sidebar.right.pane.tab.title", key: id }, Title)`；Body 的 props 由框架注入（`sessionId` 平铺 + `useTabInfo()` 取 `tab.visible`），`guide` 条目要有 provider 内唯一的 `id`。异步回调是 `ctx.inject` 的常态，别写同步回头检查。
 - 改界面文案：`lib/client.js` 内联的 `zh`/`en` 两份词典必须键集完全对称（当前各 90 键），新增键两侧同时加且确实被 `t("key")` 引用；`locale/zh.json` 与 `locale/en.json` 只放插件列表的 `meta.title`/`meta.description`，两样都要同时进 `exports` 与 `files`。
 - 改本地路径处理：`lib/shared/path.js` 是词法加 realpath 的双层校验，含分隔符统一与 Windows 大小写折叠。新增用例至少覆盖：盘符根、`..`、符号链接指向根外、以及拿不到显式 root 的情形。
-- 宿主版本声明：`package.json` 不写 `engines.dsh`，也不列 `@deepseek-ai/*` peer。宿主每出一条新预发布线，显式区间就要补一段，漏了就变成安装硬拒；不声明则安装端不做版本校验。
 - 发版：`package.json` 的 `version`、CHANGELOG 顶部条目、附注 tag（`git tag -a`）、npm 发布、两份 README 的 `@x.y.z` 安装示例，五处必须同版本收口。文档改动留在 HEAD 而未 bump 时，CHANGELOG 补 `## [Unreleased]` 段。
 - 改依赖：`@xterm/*` 两件保持精确版本（README 对它们有「钉死」表述）；`ssh2` 是 `^` 浮动。`package-lock.json` 被 `.gitignore` 排除，不要提交锁文件来「提高复现性」。
 - 改安装链逻辑：bash 与 PowerShell 两侧共用的逻辑只放 `scripts/lib/*.cjs`（`ws-exclude`/`bundle-check`/`strip-mount`）单源，两侧经 node 调用；别在脚本里重新内联 JS。这三个文件在 `files` 白名单里，改名或删除会同时打断两条安装链，改动必须两侧伪 home 夹具复验。
@@ -99,7 +98,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 
 | 症状（报错里的可检索片段） | 处理 |
 |---|---|
-| `dsh: skipping profile bundle "dsh-ssh-tunnel"` | 本包不声明宿主要求，版本闸不拦；按日志给出的原因排查（缺 `dsh.bundle.patch`、客户端包缺失、加载期抛错） |
+| `dsh: skipping profile bundle "dsh-ssh-tunnel"` | 按日志给出的原因排查（缺 `dsh.bundle.patch`、客户端包缺失、加载期抛错） |
 | `Failed to parse pnpm-workspace.yaml` 或 `can not read a block mapping entry` | 1.0.1 的 install.sh 曾追加出字面 `\n` 垃圾行；现已写后回读断言、失败回滚。遇到历史遗留的坏行仍要手工删掉那一行，别再重复跑同一脚本 |
 | `找不到 profile 目录` / `Profile dir missing` | 传入的 profile 名不存在；以 `~/.dsh/profiles` 下实际目录为准 |
 | `dsh: installation rejected: ... incompatible with dsh` | 版本闸拒绝，按宿主给的 allow-version 豁免流程走，别改区间来绕过 |
