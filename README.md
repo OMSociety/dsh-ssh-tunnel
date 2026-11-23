@@ -23,8 +23,6 @@
 
 它**不会**把全局 `fs` / `subprocess` 换成一个远程盘：远端操作只发生在你显式调用的 `SSHManager` 工具与面板里，本地文件与远端文件始终是两侧分明的东西。
 
-配套插件是 [dsh-git-forge](https://github.com/OMSociety/dsh-git-forge)（Git 凭据与 push 策略）。
-
 ## 参考来源
 
 **产品形态与部分 UX 参考开源项目 [LiveAgent](https://github.com/thirsty5034/LiveAgent)**（多机 SSH 主机库、按项目授权、侧栏隧道管理、中央终端 / SFTP 等）。

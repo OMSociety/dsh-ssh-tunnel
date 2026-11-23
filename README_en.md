@@ -22,8 +22,6 @@
 
 It does **not** replace the global `fs` / `subprocess` with a remote disk: remote operations happen only in the `SSHManager` tool you call explicitly and inside the panel, and local and remote files remain two clearly separated sides.
 
-Its companion plugin is [dsh-git-forge](https://github.com/OMSociety/dsh-git-forge) (Git credentials and push policy).
-
 ## Prior art
 
 **The product shape and several UX patterns are informed by the open-source [LiveAgent](https://github.com/thirsty5034/LiveAgent)** (multi-host SSH inventory, project-scoped access, sidebar tunnel management, center terminal / SFTP surfaces).
