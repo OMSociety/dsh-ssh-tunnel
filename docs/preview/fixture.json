@@ -1,0 +1,31 @@
+{
+  "sessionId": "preview-session",
+  "projectPathKey": "/home/dev/workspace",
+  "hosts": [
+    { "id": "h-build", "name": "build-server", "host": "build.example.org", "port": 22, "username": "dev", "authType": "privateKey", "credentialStatus": "saved", "source": "manual" },
+    { "id": "h-staging", "name": "staging", "host": "staging.example.org", "port": 22, "username": "deploy", "authType": "password", "credentialStatus": "saved", "source": "manual" },
+    { "id": "h-lab", "name": "lab-gpu", "host": "gpu.example.org", "port": 2222, "username": "dev", "authType": "privateKey", "credentialStatus": "saved", "source": "openssh" }
+  ],
+  "granted": ["h-build", "h-staging"],
+  "sessions": [
+    { "session_id": "s-build", "title": "build-server", "endpoint": "dev@build.example.org:22", "status": "connected", "running": true, "sftpEnabled": true },
+    { "session_id": "s-staging", "title": "staging", "endpoint": "deploy@staging.example.org:22", "status": "connected", "running": true, "sftpEnabled": true }
+  ],
+  "localPath": "/home/dev/workspace",
+  "local": [
+    { "name": "docs", "isDirectory": true, "size": 0 },
+    { "name": "src", "isDirectory": true, "size": 0 },
+    { "name": "tests", "isDirectory": true, "size": 0 },
+    { "name": "build.log", "isDirectory": false, "size": 18432 },
+    { "name": "package.json", "isDirectory": false, "size": 1264 },
+    { "name": "README.md", "isDirectory": false, "size": 5120 }
+  ],
+  "remotePath": "/srv/app",
+  "remote": [
+    { "name": "releases", "isDirectory": true, "size": 0 },
+    { "name": "shared", "isDirectory": true, "size": 0 },
+    { "name": "app.tar.gz", "isDirectory": false, "size": 4823040 },
+    { "name": "deploy.sh", "isDirectory": false, "size": 842 },
+    { "name": "version.txt", "isDirectory": false, "size": 12 }
+  ]
+}

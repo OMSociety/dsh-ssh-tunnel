@@ -46,7 +46,8 @@
   "scripts": {
     "test": "node scripts/smoke-test.mjs",
     "check": "node --check lib/index.js && node scripts/smoke-test.mjs",
-    "check:pack": "node scripts/check-pack.mjs"
+    "check:pack": "node scripts/check-pack.mjs",
+    "build:preview": "node scripts/build-preview.mjs"
   },
   "dsh": {
     "manifestVersion": 1,
@@ -81,5 +82,11 @@
     "scripts/sync-to-dsh.sh",
     "icon.svg",
     "locale/*.json"
-  ]
+  ],
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.65.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
 }

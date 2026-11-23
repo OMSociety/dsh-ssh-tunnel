@@ -14,7 +14,7 @@
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/issues"><img src="https://img.shields.io/github/issues/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Issues"></a>
   </p>
 
-<a href="#这是什么">这是什么</a> • <a href="#核心特性">核心特性</a> • <a href="#效果">效果</a> • <a href="#安装方式">安装方式</a> • <a href="#侧栏">侧栏</a> • <a href="#模型工具">模型工具</a> • <a href="#安全">安全</a> • <a href="#开发">开发</a> • <a href="#许可证与作者">许可证与作者</a>
+<a href="#这是什么">这是什么</a> • <a href="#效果">效果</a> • <a href="#安装方式">安装方式</a> • <a href="#侧栏">侧栏</a> • <a href="#模型工具">模型工具</a> • <a href="#安全">安全</a> • <a href="#开发">开发</a> • <a href="#许可证与作者">许可证与作者</a>
 </div>
 
 ## 这是什么
@@ -29,29 +29,16 @@
 
 **产品形态与部分 UX 参考开源项目 [LiveAgent](https://github.com/thirsty5034/LiveAgent)**（多机 SSH 主机库、按项目授权、侧栏隧道管理、中央终端 / SFTP 等）。
 
-## 核心特性
-
-| 特性 | 说明 |
-|---|---|
-| **主机库** | 主机增删改、支持导入 OpenSSH 配置；密码 / 私钥（含口令），密钥只存宿主侧 |
-| **按项目授权** | 授权 key 是 **DSH 会话工作区**（`projectPathKey`）；**连接前必须先授权**，Connect 不会自动写入授权 |
-| **`SSHManager` 工具** | 远端 exec、SFTP 列举/读写/增删改、上传下载、交互式会话读写；`reuse_or_create` / `new` / `require_existing` 会话策略 |
-| **中央面板** | 交互式终端（xterm）与双栏 SFTP：左侧是项目工作区、右侧是远端，可直接上传下载 |
-| **断线可续** | 掉线会话留作墓碑，可**重连**（同一 id）或关闭；意外断开自动重连最多 3 次，ssh2 keepalive 30s × 3 |
-| **主机密钥指纹** | 以 SHA256 hex 存入 `known_hosts.json`，首次连接或指纹变更时在侧栏确认并展示指纹 |
-| **本地路径守卫** | 上传 / 下载 / 列举 / 删除的本机路径限制在**项目工作区根**内，词法 **与** realpath 双重校验 |
-| **界面双语** | 侧栏与面板随 DSH 界面语言在中文 / 英文间即时切换 |
-
 ## 效果
 
 <table>
 <tr>
-<td width="66%" align="center"><a href="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sftp.png"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sftp.png" alt="中央面板：终端与双栏 SFTP，左侧项目工作区、右侧远端" width="560"></a></td>
-<td width="34%" align="center"><a href="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sidebar.png"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sidebar.png" alt="右侧栏：主机库、按项目授权与隧道会话" width="230"></a></td>
+<td width="66%" align="center"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sftp.png" alt="中央面板：双栏 SFTP，左侧项目工作区、右侧远端" width="560"></td>
+<td width="34%" align="center"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sidebar.png" alt="右侧栏：隧道会话页，连接、终端、SFTP 与断开" width="250"></td>
 </tr>
 <tr>
-<td align="center">中央面板：终端与双栏 SFTP —— 左侧项目工作区、右侧远端，可跨栏拖拽传输</td>
-<td align="center">右侧栏：主机库、按项目授权与隧道会话</td>
+<td align="center">中央面板：双栏 SFTP —— 左侧项目工作区、右侧远端，可跨栏拖拽传输</td>
+<td align="center">右侧栏：隧道会话页，连接主机并在中央打开终端或 SFTP</td>
 </tr>
 </table>
 
@@ -76,13 +63,13 @@ dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.2.5"
 
 ## 侧栏
 
-侧栏只有一个 Tab，内部三页：
+侧栏只有一个 Tab，内部三页；界面随 DSH 界面语言在中文 / 英文间即时切换：
 
 | 页面 | 作用 |
 |---|---|
-| **项目授权** | 当前项目允许使用的主机 |
-| **主机库** | 主机增删改、OpenSSH 配置扫描导入 |
-| **隧道会话** | 连接 / 断开，打开终端或 SFTP；掉线会话留墓碑，可重连或关闭 |
+| **项目授权** | 当前项目允许使用的主机；授权 key 是 **DSH 会话工作区**（`projectPathKey`） |
+| **主机库** | 主机增删改、OpenSSH 配置扫描导入；密码 / 私钥（含口令），密钥只存宿主侧 |
+| **隧道会话** | 连接 / 断开，打开终端或 SFTP；掉线会话留墓碑，可重连（同一 id）或关闭；意外断开自动重连最多 3 次，ssh2 keepalive 30s × 3 |
 
 ## 模型工具
 
@@ -137,6 +124,7 @@ npm test                            # 自检脚本全量回归（实际执行 no
 npm run check                       # 语法检查 + 自检
 node scripts/smoke-test.mjs         # 直接运行自检（离线设计，不起 SSH、不起 DSH 进程）
 bash scripts/sync-to-dsh.sh --dry-run                    # 预览 link: 接入命令；去掉 --dry-run 才会改写 profile
+npm run build:preview               # 重出 docs/ 下的预览图（需本机 Chrome，CHROME_PATH 可指定）
 node scripts/portal-probe.mjs       # 客户端 Tab 渲染探针（能解析到 react 时生效，否则明确跳过）
 ```
 
@@ -148,6 +136,7 @@ lib/client.js           客户端 bundle（已入库；dsh plugin add 不做构�
 lib/session.js          会话生命周期：连接、keepalive、掉线墓碑与自动重连、exec/SFTP 执行
 lib/shared/             宿主与客户端共用纯函数：path / args / host-key / host-summary / http-trust / persist /
                         session-auth / session-policy / shell-buffer / vendor
+docs/preview/           预览输入：fixture.json 为虚构数据，panel.html 与 docs/panel-*.png 由 build:preview 生成
 scripts/                install.sh · install.ps1 · sync-to-dsh.sh · smoke-test.mjs · portal-probe.mjs
 scripts/lib/            安装链共享逻辑（.cjs，install.sh 与 install.ps1 共用）
 cordis.patch.yml        包内 bundle patch，CLI 据此写入 dsh.profile.bundles

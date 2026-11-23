@@ -13,7 +13,7 @@
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/stargazers"><img src="https://img.shields.io/github/stars/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Stars"></a>
     <a href="https://github.com/OMSociety/dsh-ssh-tunnel/issues"><img src="https://img.shields.io/github/issues/OMSociety/dsh-ssh-tunnel?color=4f6ef7" alt="Issues"></a>
   </p>
-<a href="#what-this-is">What this is</a> • <a href="#features">Features</a> • <a href="#screenshots">Screenshots</a> • <a href="#installation">Installation</a> • <a href="#sidebar">Sidebar</a> • <a href="#model-tool">Model tool</a> • <a href="#security">Security</a> • <a href="#development">Development</a> • <a href="#license-and-author">License and author</a>
+<a href="#what-this-is">What this is</a> • <a href="#screenshots">Screenshots</a> • <a href="#installation">Installation</a> • <a href="#sidebar">Sidebar</a> • <a href="#model-tool">Model tool</a> • <a href="#security">Security</a> • <a href="#development">Development</a> • <a href="#license-and-author">License and author</a>
 </div>
 
 ## What this is
@@ -28,29 +28,16 @@ Its companion plugin is [dsh-git-forge](https://github.com/OMSociety/dsh-git-for
 
 **The product shape and several UX patterns are informed by the open-source [LiveAgent](https://github.com/thirsty5034/LiveAgent)** (multi-host SSH inventory, project-scoped access, sidebar tunnel management, center terminal / SFTP surfaces).
 
-## Features
-
-| Feature | Description |
-|---|---|
-| **Host inventory** | Create, edit and delete hosts; import from your OpenSSH config; password or private key (with passphrase). Keys stay host-side |
-| **Per-project grants** | The grant key is the **DSH session workspace** (`projectPathKey`). **Grant before connect** — Connect never auto-authorizes |
-| **`SSHManager` tool** | Remote exec, SFTP list/read/write/mkdir/rename/delete, upload and download, interactive session I/O; session strategies `reuse_or_create` / `new` / `require_existing` |
-| **Center panel** | Interactive terminal (xterm) and dual-pane SFTP: the project workspace on the left, the remote side on the right, with direct upload and download |
-| **Survives drops** | A dropped session stays as a tombstone you can **Reconnect** (same id) or close; unexpected drops auto-reconnect up to 3 times, ssh2 keepalive 30s × 3 |
-| **Host key fingerprints** | Stored as SHA256 hex in `known_hosts.json`; first connect or a changed fingerprint is confirmed in the sidebar with the fingerprint shown |
-| **Local path guard** | Local upload / download / list / delete paths are constrained to the **project workspace root**, with both lexical and realpath checks |
-| **Bilingual UI** | Sidebar and panel follow the DSH interface language between Chinese and English live |
-
 ## Screenshots
 
 <table>
 <tr>
-<td width="66%" align="center"><a href="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sftp.png"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sftp.png" alt="Center panel: terminal and dual-pane SFTP with the project workspace on the left and the remote side on the right" width="560"></a></td>
-<td width="34%" align="center"><a href="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sidebar.png"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sidebar.png" alt="Sidebar: host inventory, per-project grants and tunnel sessions" width="230"></a></td>
+<td width="66%" align="center"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sftp.png" alt="Center panel: dual-pane SFTP with the project workspace on the left and the remote side on the right" width="560"></td>
+<td width="34%" align="center"><img src="https://raw.githubusercontent.com/OMSociety/dsh-ssh-tunnel/main/docs/panel-sidebar.png" alt="Sidebar: the Sessions page with connect, terminal, SFTP and disconnect" width="250"></td>
 </tr>
 <tr>
-<td align="center">Center panel: terminal and dual-pane SFTP — project workspace on the left, remote on the right, drag across panes</td>
-<td align="center">Sidebar: host inventory, per-project grants and tunnel sessions</td>
+<td align="center">Center panel: dual-pane SFTP — project workspace on the left, remote on the right, drag across panes</td>
+<td align="center">Sidebar: the Sessions page — connect a host, then open the terminal or SFTP in the center</td>
 </tr>
 </table>
 
@@ -75,13 +62,13 @@ dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.2.5"
 
 ## Sidebar
 
-One sidebar tab with three pages:
+One sidebar tab with three pages; the UI follows the DSH interface language between Chinese and English live:
 
 | Page | Purpose |
 |---|---|
-| **Project access** | Hosts the current project may use |
-| **Hosts** | Host CRUD and OpenSSH config scan import |
-| **Sessions** | Connect / disconnect, open the terminal or SFTP; dropped sessions stay as tombstones you can reconnect or close |
+| **Project access** | Hosts the current project may use; the grant key is the **DSH session workspace** (`projectPathKey`) |
+| **Hosts** | Host CRUD and OpenSSH config scan import; password or private key (with passphrase), keys stay host-side |
+| **Sessions** | Connect / disconnect, open the terminal or SFTP; dropped sessions stay as tombstones you can reconnect (same id) or close; unexpected drops auto-reconnect up to 3 times, ssh2 keepalive 30s × 3 |
 
 ## Model tool
 
@@ -136,6 +123,7 @@ npm test                            # full regression of the smoke scripts (runs
 npm run check                       # syntax check + smoke tests
 node scripts/smoke-test.mjs         # run the smoke scripts directly (offline by design: no SSH, no DSH process)
 bash scripts/sync-to-dsh.sh --dry-run                    # preview the link: registration; drop --dry-run to actually rewrite the profile
+npm run build:preview               # regenerate the preview images under docs/ (needs local Chrome; CHROME_PATH overrides)
 node scripts/portal-probe.mjs       # client tab render probe (runs when react resolves, otherwise skips)
 ```
 
@@ -147,6 +135,7 @@ lib/client.js           Client bundle (committed; dsh plugin add does not build)
 lib/session.js          Session lifecycle: connect, keepalive, drop tombstones and auto-reconnect, exec/SFTP execution
 lib/shared/             Pure functions shared by host and client: path / args / host-key / host-summary / http-trust / persist /
                         session-auth / session-policy / shell-buffer / vendor
+docs/preview/           Preview input: fixture.json is fictional data; panel.html and docs/panel-*.png are generated by build:preview
 scripts/                install.sh · install.ps1 · sync-to-dsh.sh · smoke-test.mjs · portal-probe.mjs
 scripts/lib/            Installer shared logic (.cjs, used by both install.sh and install.ps1)
 cordis.patch.yml        In-package bundle patch the CLI turns into dsh.profile.bundles
