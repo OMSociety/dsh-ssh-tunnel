@@ -60,7 +60,7 @@ Its companion plugin is [dsh-git-forge](https://github.com/OMSociety/dsh-git-for
 
 ```powershell
 # stop the running DSH first (a live service holds the dependency lock; start it again afterwards)
-dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.2.4"
+dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.2.5"
 ```
 
 > **Note**: After installing, **refresh the browser page** for the "SSH Tunnel" entry to appear in the sidebar — restarting the host alone is not enough, because the client artifact is fetched when the page loads.
@@ -106,7 +106,7 @@ One sidebar tab with three pages:
 
 ## Security
 
-**Trust boundary (stated as it is)**: the plugin's API and vendor routes are served by the DSH host's web server, and the host `connection` service is a required dependency. Every request first goes through `connection.requestRejection(req)`, which applies the host's Host/Origin fence and browser-session authentication. A 401 or 403 ends the response immediately with the same status; only `undefined` proceeds to plugin URL/body parsing, file reads and business dispatch. Session APIs require `projectPathKey` and are invisible across projects.
+**Trust boundary (stated as it is)**: the plugin's API and vendor routes are served by the DSH host's web server, and the host `connection` service is a required dependency. Every request first passes host admission: when the host provides `connection.requestRejection(req)`, it applies the host's Host/Origin fence and browser-session authentication, a 401 or 403 ends the response immediately with the same status, and only `undefined` proceeds; when the host does not provide it (DSH 0.2.3-alpha.1 and later), the Peer passed by the WebServer must be an owner, otherwise the response is 403. Admitted requests proceed to plugin URL/body parsing, file reads and business dispatch. Session APIs require `projectPathKey` and are invisible across projects.
 
 Authorization and path-guard action list:
 

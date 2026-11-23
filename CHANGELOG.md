@@ -10,6 +10,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2026-11-24
+
+### 修复
+
+- **DSH 0.2.3-alpha.1 起侧栏 API 一律 HTTP 400。** 新版宿主的 `connection` 服务不再提供 `requestRejection`，API 与 vendor 路由首行调用它而抛 TypeError。现在 `connection.requestRejection` 存在时沿用原检查（宿主 <= 0.2.2-rc.5，WebServer 不传 Peer）；不存在时要求 WebServer 传入的 Peer 为 owner，否则回 403 `{ok:false,error:"forbidden"}`。离线回归覆盖非 owner、缺 Peer 与 owner 放行。
+
+### Fixed
+
+- **Sidebar API answered HTTP 400 for every request from DSH 0.2.3-alpha.1.** The newer host `connection` service no longer provides `requestRejection`, and the API and vendor routes called it first and threw a TypeError. When `connection.requestRejection` exists the original check still applies (hosts <= 0.2.2-rc.5, whose WebServer passes no Peer); otherwise the Peer passed by the WebServer must be an owner, else the response is 403 `{ok:false,error:"forbidden"}`. Offline regressions cover non-owner, missing Peer and owner.
+
 ## [1.2.4] - 2026-11-22
 
 ### 修复

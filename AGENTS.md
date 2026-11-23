@@ -16,8 +16,8 @@
 
 | 目的 | 命令 | 什么算通过 |
 |---|---|---|
-| 跑全部自检 | `npm test` | 每用例一行 `ok`（当前 61）+ 末行 `61 passed, 0 skipped, 0 failed`、`all passed` + 退出码 0 |
-| 语法检查加自检 | `npm run check` | `node --check lib/index.js` 无输出，随后同一套自检（当前 61 用例）+ 末行 `all passed` + 退出码 0 |
+| 跑全部自检 | `npm test` | 每用例一行 `ok`（当前 63）+ 末行 `63 passed, 0 skipped, 0 failed`、`all passed` + 退出码 0 |
+| 语法检查加自检 | `npm run check` | `node --check lib/index.js` 无输出，随后同一套自检（当前 63 用例）+ 末行 `all passed` + 退出码 0 |
 | 浏览器产物语法 | `node --check lib/client.js` | 无输出、退出码 0 |
 | 发布前的文件清单自查 | `npm pack --dry-run` | 计数与 `files` 白名单展开一致（当前 30） |
 | 安装计划（bash，不写盘） | `bash scripts/install.sh --profile <profile> --dry-run`（profile 名以 `~/.dsh/profiles` 下实际目录为准） | 只打印计划、不写任何文件；`--profile` 必填，缺失或不存在时报错列出实存 profile 并退出 2 |
@@ -42,9 +42,13 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 ```
 
 - `projectPathKey` 是唯一的租户边界，来源有两条且必须一起看：模型侧从宿主会话头取（服务端权威）；侧栏侧先由 `getProjectContext` 用同一个会话头解析（`sessionCwdOf`，取 `ctx.sessions.get(sessionId).header.cwd`）并回带，后续接口带 `body.projectPathKey` 自报（宿主仍接受 `body.cwd` 作兜底入参，本插件客户端不再传）。
-- API 与 vendor 路由都以宿主 `connection` 服务为硬依赖（列入 `inject`）。`lib/index.js` 的 `createApiHandler` 与 `createVendorHandler` 首先直接调用 `ctx.connection.requestRejection(req)`，由宿主执行 Host/Origin 围栏与浏览器会话认证；401 / 403 按原状态码立即结束，只有 `undefined` 才继续 URL 解析、正文读取、静态资源解析与读取或业务分派。
+- API 与 vendor 路由都以宿主 `connection` 服务为硬依赖（列入 `inject`）。`lib/index.js` 的 `createApiHandler` 与 `createVendorHandler` 首先经共用的 `admitRequest`：`ctx.connection.requestRejection` 存在（宿主 <= 0.2.2-rc.5，WebServer 不传 Peer）时调用它，由宿主执行 Host/Origin 围栏与浏览器会话认证，401 / 403 按原状态码立即结束，只有 `undefined` 才继续；不存在（>= 0.2.3-alpha.1）时要求第三参 Peer 的 `principal.kind` 为 `owner`，否则 403。放行后才继续 URL 解析、正文读取、静态资源解析与读取或业务分派。
 - 宿主与侧栏之间只有这一条 HTTP 通道；工具分派与 API 分派共用 `lib/shared/` 的纯函数，但 `lib/client.js` 不 import 它们——它是自包含产物。
 - 允许：`lib/index.js` 与 `lib/session.js` 依赖 `lib/shared/`。禁止：`lib/shared/` 反向依赖 `session.js`/`index.js`。原因：shared 是两侧共用且可在无 ssh2、无宿主环境下被自检直接导入的层，反向依赖会让自检跑不起来。
+
+## 待办（有触发条件）
+
+- **移除旧宿主兼容分支**：DSH 0.2.3 发布 rc 版后，删除 `lib/index.js` 的 `admitRequest` 中 `requestRejection` 分支、`scripts/smoke-test.mjs` 中对应的旧宿主用例，并把两份 README 的「信任边界」改为只描述 Peer 校验；CHANGELOG 在 Removed 章节记录。
 
 ## 修改契约
 

@@ -473,6 +473,53 @@ test('http route: allowed vendor request resolves and reads its asset', async ()
   assert.deepEqual(events, ['connection', 'resolveAsset', 'readFile'])
 })
 
+test('http route: peer-based host without requestRejection rejects non-owner and missing peer', async () => {
+  for (const peer of [undefined, { principal: { kind: 'guest' } }]) {
+    const events = []
+    const apiRes = mockHttpResponse()
+    await createApiHandler({ connection: {} }, {
+      readBody: async () => events.push('readBody'),
+      dispatch: async () => events.push('dispatch'),
+    })(unparsedRequest('POST'), apiRes, peer)
+    assert.equal(apiRes.statusCode, 403)
+    assert.deepEqual(JSON.parse(apiRes.body.toString('utf8')), { ok: false, error: 'forbidden' })
+
+    const vendorRes = mockHttpResponse()
+    await createVendorHandler({ connection: {} }, {
+      resolveAsset: () => events.push('resolveAsset'),
+      readFile: () => events.push('readFile'),
+    })(unparsedRequest('GET'), vendorRes, peer)
+    assert.equal(vendorRes.statusCode, 403)
+    assert.deepEqual(events, [])
+  }
+})
+
+test('http route: peer-based host without requestRejection lets an owner reach API and vendor', async () => {
+  const peer = { principal: { kind: 'owner' } }
+  const apiReq = {
+    method: 'POST',
+    url: '/dsh-ssh-tunnel/api/health',
+    async *[Symbol.asyncIterator]() {
+      yield Buffer.from('{}')
+    },
+  }
+  const apiRes = mockHttpResponse()
+  await createApiHandler({ connection: {} })(apiReq, apiRes, peer)
+  assert.equal(apiRes.statusCode, 200)
+  assert.equal(JSON.parse(apiRes.body.toString('utf8')).ok, true)
+
+  const dir = makeTempDir('dsh-ssh-vendor-owner')
+  const filePath = join(dir, 'asset.txt')
+  writeFileSync(filePath, 'vendor fixture')
+  const vendorRes = mockHttpResponse()
+  await createVendorHandler({ connection: {} }, {
+    resolveAsset: () => ({ path: filePath, type: 'text/plain; charset=utf-8' }),
+    readFile: (path) => readFileSync(path),
+  })({ method: 'GET', url: '/dsh-ssh-tunnel/vendor/xterm.js' }, vendorRes, peer)
+  assert.equal(vendorRes.statusCode, 200)
+  assert.equal(vendorRes.body.toString('utf8'), 'vendor fixture')
+})
+
 test('constrainToWorkspace rejects outbound symlink', () => {
   const base = wsPath('DSH-plugin')
   const link = join(base, '.audit-path-guard-link')
