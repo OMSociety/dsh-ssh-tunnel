@@ -1,7 +1,7 @@
 # AGENTS.md — dsh-ssh-tunnel Agent 宪法
 
 适用范围：本仓库全部目录。
-最后更新：2026-11-22
+最后更新：2026-11-25
 
 ## 项目概览
 
@@ -9,27 +9,26 @@
 - 运行时：Node >= 20、纯 JavaScript、ESM（`"type": "module"`）。浏览器半侧是自包含 bundle，宿主半侧无构建步骤。
 - 直接依赖：`ssh2`（`^1.17.0`，浮动）、`@xterm/xterm@5.5.0`、`@xterm/addon-fit@0.11.0`（精确钉版）。
 - 宿主契约：宿主包由 DSH 运行时提供。
-- 没有 TypeScript、没有 lint/format/类型检查配置、没有 CI 目录：代码风格与正确性只靠上面两条命令加人工把关，无工具兜底。
+- CI 配置见 [.github/workflows/ci.yml](./.github/workflows/ci.yml)：在 Ubuntu 上运行完整自检与打包正反例。
 - 文档索引：[README.md](./README.md) 与 [README_en.md](./README_en.md)（逐节对应）、[CHANGELOG.md](./CHANGELOG.md)（中英并列段，Keep a Changelog + SemVer）、[package.json](./package.json)。
 
 ## 常用命令
 
 | 目的 | 命令 | 什么算通过 |
 |---|---|---|
-| 跑全部自检 | `npm test` | 每用例一行 `ok`（当前 63）+ 末行 `63 passed, 0 skipped, 0 failed`、`all passed` + 退出码 0 |
+| 全部自检 | `npm test` | 退出码 0、0 skipped、0 failed、末行 `all passed` |
 | 重出 README 预览图 | `npm run build:preview` | 需本机 Chrome（`CHROME_PATH` 可指定）；输出 `docs/panel-sidebar.png`、`docs/panel-sftp.png`、`docs/preview/panel.html` |
-| 语法检查加自检 | `npm run check` | `node --check lib/index.js` 无输出，随后同一套自检（当前 63 用例）+ 末行 `all passed` + 退出码 0 |
+| 语法检查加自检 | `npm run check` | 宿主与客户端入口均通过语法检查，随后完整自检通过 |
 | 浏览器产物语法 | `node --check lib/client.js` | 无输出、退出码 0 |
-| 发布前的文件清单自查 | `npm pack --dry-run` | 计数与 `files` 白名单展开一致（当前 30） |
-| 安装计划（bash，不写盘） | `bash scripts/install.sh --profile <profile> --dry-run`（profile 名以 `~/.dsh/profiles` 下实际目录为准） | 只打印计划、不写任何文件；`--profile` 必填，缺失或不存在时报错列出实存 profile 并退出 2 |
-| 安装计划（PowerShell，不写盘） | `pwsh -File scripts/install.ps1 -Profile <profile> -DryRun` | 只打印计划、不写任何文件；`-Profile` 必填，写成 `--dry-run` 会被当作未知参数拒绝并退出 2 |
+| 发包成员及缺件回归 | `npm run test:pack` | 必需成员在 npm 打包清单中；故意缺件的清单均被拒绝 |
+| 禁止监听环境下的子集 | `node scripts/smoke-test.mjs --no-listen` | 只执行无需回环监听的用例；交付时注明跳过项 |
 
 ```bash
 npm test
 npm run check
 ```
 
-自检是离线设计（不起 SSH、不起 DSH 进程）。仓库内没有按用例过滤的入口：脚本用自带的 `test()` harness，要单验一条就在系统临时目录复制一份改。需要真跑 exec/sftp 语义时，用 `node_modules/ssh2` 的 `Server` 在 127.0.0.1 起本地假主机（临时生成 host key、密码认证），不要连真实主机。UI 挂载校验器在 `dsh-plugin-creator` 技能的 `scripts/check-mounts.mjs`，不在本仓库：本插件的面板挂在官方 `sidebar.right.pane.tab` / `sidebar.right.pane.tab.title` 槽位上，改过挂载后用 `--check <本仓库根>` 跑一遍，error 须清零（`keyed` 席位按 `TAB_ID` 命名）。
+自检使用临时数据目录，不依赖公网或运行中的 DSH。完整自检在 `127.0.0.1` 启动临时 ssh2 Server；模拟正常退出、非零退出、信号终止和连接切断时只连本地夹具。改过挂载时检查 `sidebar.right.pane.tab` / `sidebar.right.pane.tab.title`，两席都按 `TAB_ID` 命名。
 
 ## 架构边界
 
@@ -42,14 +41,14 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
    -> POST /dsh-ssh-tunnel/api/<method>   当前 32 个 method 分支
 ```
 
-- `projectPathKey` 是唯一的租户边界，来源有两条且必须一起看：模型侧从宿主会话头取（服务端权威）；侧栏侧先由 `getProjectContext` 用同一个会话头解析（`sessionCwdOf`，取 `ctx.sessions.get(sessionId).header.cwd`）并回带，后续接口带 `body.projectPathKey` 自报（宿主仍接受 `body.cwd` 作兜底入参，本插件客户端不再传）。
-- API 与 vendor 路由都以宿主 `connection` 服务为硬依赖（列入 `inject`）。`lib/index.js` 的 `createApiHandler` 与 `createVendorHandler` 首先经共用的 `admitRequest`：`ctx.connection.requestRejection` 存在（宿主 <= 0.2.2-rc.5，WebServer 不传 Peer）时调用它，由宿主执行 Host/Origin 围栏与浏览器会话认证，401 / 403 按原状态码立即结束，只有 `undefined` 才继续；不存在（>= 0.2.3-alpha.1）时要求第三参 Peer 的 `principal.kind` 为 `owner`，否则 403。放行后才继续 URL 解析、正文读取、静态资源解析与读取或业务分派。
+- 模型工具从宿主会话头取得项目工作区。侧栏经 `getProjectContext` 解析后，owner 在后续请求中指定项目；不得把该管理面当作不可信调用方的权威项目绑定。
+- API 与 vendor 经宿主 `connection` 准入。0.2.3-alpha.2 检查 WebServer 传入的 Peer 的 `principal.kind`。0.2.2-rc.5 专属适配：先执行宿主请求检查；除 health 与静态资源外，必须验证 `admit(req)` 的 peer 是 `connection.browserPeer` 且为 owner。改此处须分别覆盖无身份、非 owner、owner，并覆盖 rc.5 的非浏览器 API peer。
 - 宿主与侧栏之间只有这一条 HTTP 通道；工具分派与 API 分派共用 `lib/shared/` 的纯函数，但 `lib/client.js` 不 import 它们——它是自包含产物。
 - 允许：`lib/index.js` 与 `lib/session.js` 依赖 `lib/shared/`。禁止：`lib/shared/` 反向依赖 `session.js`/`index.js`。原因：shared 是两侧共用且可在无 ssh2、无宿主环境下被自检直接导入的层，反向依赖会让自检跑不起来。
 
 ## 待办（有触发条件）
 
-- **移除旧宿主兼容分支**：DSH 0.2.3 发布 rc 版后，删除 `lib/index.js` 的 `admitRequest` 中 `requestRejection` 分支、`scripts/smoke-test.mjs` 中对应的旧宿主用例，并把两份 README 的「信任边界」改为只描述 Peer 校验；CHANGELOG 在 Removed 章节记录。
+- **0.2.3 首个 RC 发布时**：清理 0.2.2 专属 HTTP 适配与相应用例，保留 owner 准入测试；同步两份 README 和 CHANGELOG。
 
 ## 修改契约
 
@@ -62,8 +61,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 - 改本地路径处理：`lib/shared/path.js` 是词法加 realpath 的双层校验，含分隔符统一与 Windows 大小写折叠。新增用例至少覆盖：盘符根、`..`、符号链接指向根外、以及拿不到显式 root 的情形。
 - 发版：`package.json` 的 `version`、CHANGELOG 顶部条目、附注 tag（`git tag -a`）、npm 发布、两份 README 的 `@x.y.z` 安装示例，五处必须同版本收口。文档改动留在 HEAD 而未 bump 时，CHANGELOG 补 `## [Unreleased]` 段。
 - 改依赖：`@xterm/*` 两件保持精确版本（README 对它们有「钉死」表述）；`ssh2` 是 `^` 浮动。`package-lock.json` 被 `.gitignore` 排除，不要提交锁文件来「提高复现性」。
-- 改安装链逻辑：bash 与 PowerShell 两侧共用的逻辑只放 `scripts/lib/*.cjs`（`ws-exclude`/`bundle-check`/`strip-mount`）单源，两侧经 node 调用；别在脚本里重新内联 JS。这三个文件在 `files` 白名单里，改名或删除会同时打断两条安装链，改动必须两侧伪 home 夹具复验。
-- 本节与下文凡「当前 N 个」都是 2026-11-22 的快照数，改动后按这些命令现数：动作数 `grep -o "action === '[^']*'" lib/index.js | sort -u | wc -l`（别用 `[a-z_]*` 形参——git-bash 的 grep 会截断匹配）、method 分支数 `grep -cE "method === '" lib/index.js`（再减去 `createVendorHandler` 里的那一处）、UI 调用点 `grep -o 'api("[A-Za-z]*"' lib/client.js | sort -u | wc -l`、词典键数在 `lib/client.js` 的 `zh`/`en` 两个字面量里数键名冒号、包内文件数 `npm pack --dry-run` 的末行。
+- 安装由 DSH 插件管理入口负责。发布清单须包含实际 main、client、图标、patch 和两份 locale；改 `files` 或 `exports` 后跑 `npm run test:pack`。
 
 ## 禁止操作
 
@@ -71,7 +69,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 - 禁止用 `String(a || b)` 承担必填校验。原因：缺参数会变成字面量文件名 `undefined` 写到本地盘或远端目录（1.0.1 实测 12 处——按含路径参数的 `String(a || b)` 调用计、落在 11 行——能把用户文件改名成 `undefined` 并回 `ok: true`）。1.0.2 起统一走 `lib/shared/args.js` 的 `requireString`/`stringOrDefault`（缺了就 throw），别手写 `||` 兜底。
 - 禁止把 `chmod 0600`/`0700` 当成 Windows 上的凭据保护。原因：NTFS 下实测 ACL 全量继承父目录，`chmodSync` 不改 DACL。写进文档时必须加平台限定。
 - 禁止让路径守卫保留 `/workspace` 兜底还对外称「不假设挂载点」。原因：Windows 上它解析成宿主进程当前盘的 `\workspace`，该目录存在时守卫作用域就从当前项目放大到整棵 workspace 树。root 取不到就拒绝，不要兜底。
-- 禁止为了「验证安装」而运行 `dsh plugin ...`、改 `~/.dsh/profiles/**` 或改写 profile 的 `pnpm-workspace.yaml`/`cordis.patch.yml`。原因：那是用户的真实环境，运行中的宿主锁着依赖，改动会撞锁或把插件装成半残。要验证就把 `DSH_HOME` 与 `DSH_CMD` 指向系统临时目录里的伪 home 与桩，跑完再核对真实 profile 的哈希未变；停启 DSH 由用户执行。
+- 验证安装时使用独立临时 profile。真实 profile 承载运行中的宿主与用户数据；生产宿主的停启由用户执行。
 - 禁止读取或转述 `secrets.json` 的内容，也禁止把它任何片段写进仓库文件、测试夹具或提交信息。原因：那是明文凭据文件，数据目录本就不该进仓库。
 - 禁止用错误文案的正则白名单判断会话终态。原因：白名单外的错误既不显示也不停止轮询，状态栏会谎报 connected；终态要用宿主返回的状态字段。
 - 禁止在 README、CHANGELOG、注释或测试里写真实主机名、内网地址、个人绝对路径或 emoji。原因：这是对外发布的包，仓库里任何一行都会被 `npm pack` 带进产物并被第三方读到。
@@ -82,7 +80,7 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 
 1. `npm test`，且末行是 `all passed`。
 2. `npm run check`。
-3. 改过界面或样式时：`node --check lib/client.js`。
+3. `npm run test:pack`：实际包清单通过，故意缺件的对照必须失败。
 4. 中英两份 README 与 CHANGELOG 同步（改一版必须两版都有）。
 5. 改过界面：刷新浏览器后，右侧栏标签条的「+」引导页里出现「SSH 隧道」入口，点开即挂载面板——官方右侧栏不自动常驻，布局按会话持久化，每个新会话第一次要各开一次。客户端产物在页面加载时取，只重启宿主不生效。这一条需要用户在真实 DSH 里目视确认，Agent 无法自证时必须在交付说明里写明「界面未验证」。
 6. 输出里出现 `skip ... symlink unavailable` 时不算全绿：那是符号链接用例没跑（Windows 未开开发者模式），必须在交付说明里明写。
@@ -91,26 +89,21 @@ lib/client.js   浏览器 bundle（window.__ModuleLoader__.load，require 只认
 
 | 路径 | 风险（有实测的标注实测） | 改动前与改动后必做 |
 |---|---|---|
-| `lib/session.js` 的 exec 结算 | 结算字段是 `exitKnown`/`code`/`signal`/`connectionDropped`/`truncated`；1.0.1 的 `code ?? 0` 曾把信号死与连接中途销毁报成 `exit: 0` 且 `isError: false`（本地 ssh2 Server 实测） | 别把结算改回单一 code 语义；正常退出、127、信号死、连接切断四类 ssh2 Server 夹具已在自检里，动结算必跑且别删用例 |
-| `lib/session.js` 的输出缓冲与 `shellRead` 游标 | 512 KiB 保留缓冲 + 每次交付最多 256 KiB（`SHELL_READ_CHUNK_MAX`）；游标语义是宿主回 `since`（本次交付到的 seq）、`baseSeq`（最旧保留）、`dropped`（有缺口）、`chunkTruncated`，客户端 `dropped` 时从 `baseSeq-1` 全量重取并清屏（旧版客户端用 `since = length`，饱和后交付率实测 0.7%–16%） | 动游标协议要四处同步：`session.js` 的 `chunkFrom`、`shell-buffer.js`、`client.js` 的消费与重取处、README 的上限声明 |
-| `lib/session.js` 的输出解码与 `max_bytes` | 1.0.2 起 Buffer 聚合后一次解码、按字节截断并回 `truncated`；`max_bytes` 由 `clampMaxBytes` 钳制在 1 KiB–1 MiB（exec 默认 256 KiB、SFTP 读默认 512 KiB；旧版无钳制实测可要到 6 MiB，且按块拼接把跨块 UTF-8 打成替换符） | 别回退成按块字符串拼接；改上限要同步 `session-policy.js` 的 `MAX_BYTES_*` 常量与 README 声明 |
-| `scripts/install.sh` 的写入步骤 | 1.0.1 的 bash 单引号内联 JS 因 `"\\n"` 与 `\\s` 转义不生效而追加出非法 YAML、幂等分支是死代码、假报成功退 0；现已抽成 `scripts/lib/*.cjs`，写后回读断言、失败回滚并非零退出 | 伪 home 夹具跑完必须回读并用 YAML 解析器判定，连跑两次验幂等；改逻辑只改 .cjs 单源 |
-| `scripts/install.ps1` | `-Profile` 必填（缺失或不存在时列出实存 profile）、未知参数拒绝（`--dry-run` 实测报错退 2，不再静默吞掉真装）、内联 JS 已落 `scripts/lib/*.cjs` 并逐步查 `$LASTEXITCODE`（5.1 的引号剥离问题随之消除）；PATH 无 `dsh` 时的 npx 兜底先打印命令并要求确认 | 改动必须在 `powershell`（5.1）与 `pwsh`（7）两侧各跑一遍伪 home 夹具，并检查 `$LASTEXITCODE` 传导 |
-| `package.json` 的 `dsh` 段与 `exports`/`files` | 挂载校验器不读 `package.json`，写错是静默的（1.0.2 已补 `dsh.client.inject` 的到达顺序边、`exports` 的 `./cordis.patch.yml`、`files` 的 `scripts/lib/*.cjs`） | 改完 `npm pack --dry-run` 对清单，并与宿主实装目录逐文件比 |
+| exec 结算 | 模型拿到 `text`/`isError`；只有已知退出码 0 成功 | 用回环 SSH 夹具分别验证 0、非零、信号和断线 |
+| PTY 输出与 `shellRead` 游标 | 按 UTF-8 字节计最多保留 512 KiB，每次交付最多 256 KiB | 验证跨事件拆字与大块分页，逐页拼接不得丢失或重复；同步客户端与 README |
+| `max_bytes` | exec 双流共享一次调用预算；SFTP 文本读取按前缀截断 | 修改时验证双流和跨限分包；同步两份 README 的默认值与上限 |
+| 传输与撤权 | 下载使用同目录临时文件，通过结果授权门后提交；上传可能留下远端部分内容 | 失败、超时、取消与撤权均应保留已有下载目标；检查临时文件回收 |
+| 包清单 | 宿主按 `dsh.bundle.patch`、入口与导出路径解析 | 核对 `npm run test:pack` 的正反例 |
 | 数据目录 | `$DSH_HOME/ssh-tunnel/` 下 `hosts`/`secrets`/`grants`/`known_hosts` 四个 JSON，原子写用固定 `.tmp` 名 | 手改前先备份；测试一律用临时 `DSH_HOME`；坏 JSON 是抛错而非当空库，别改成静默 |
-| `pendingPrompts` | 1.0.2 起 TTL 5 分钟、总量上限 50、`listPrompts`/`answerPrompt` 收 `projectPathKey` 且 `answerPrompt` 校验主机仍在授权内；残留缺口：删主机不主动清它的 pendingPrompts，靠 TTL 兜底 | 改 TTL/上限常量要同步自检用例；动生命周期前先定删主机时的清理策略 |
+| 主机指纹提示 | 信任或驳回均须核对项目与有效授权；信任前核对端点 | 改生命周期时分别验证有效、撤权、错项目与端点变化 |
 
 ## 出错怎么办
 
 | 症状（报错里的可检索片段） | 处理 |
 |---|---|
 | `dsh: skipping profile bundle "dsh-ssh-tunnel"` | 按日志给出的原因排查（缺 `dsh.bundle.patch`、客户端包缺失、加载期抛错） |
-| `Failed to parse pnpm-workspace.yaml` 或 `can not read a block mapping entry` | 1.0.1 的 install.sh 曾追加出字面 `\n` 垃圾行；现已写后回读断言、失败回滚。遇到历史遗留的坏行仍要手工删掉那一行，别再重复跑同一脚本 |
-| `找不到 profile 目录` / `Profile dir missing` | 传入的 profile 名不存在；以 `~/.dsh/profiles` 下实际目录为准 |
 | `dsh: installation rejected: ... incompatible with dsh` | 版本闸拒绝，按宿主给的 allow-version 豁免流程走，别改区间来绕过 |
 | 装好了但侧栏没有入口 | 刷新浏览器页面；官方右侧栏的标签页不自动常驻，入口在标签条「+」的引导页里；开 DevTools Console 看注册期异常（宿主侧一声不吭） |
-| `未找到 dsh（可用 DSH_CMD 指定）` | git-bash 不解析 `.cmd`，在那里要写 `dsh.cmd`，或用 `DSH_CMD` 指到内嵌 CLI |
-| `npm test` 里 9 个用例失败且都是路径类 | 历史问题：夹具硬编码 POSIX 路径；现版已改走 `normalizeProjectKey` 与一次性根，若复现先看 `DSH_SSH_TUNNEL_WORKSPACE_ROOT` |
 
 ## 维护
 

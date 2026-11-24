@@ -10,6 +10,38 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-11-25
+
+### 变更
+
+- 侧栏管理在 0.2.2-rc.5 要求宿主识别的浏览器 owner，在 0.2.3-alpha.2 要求 WebServer 传入 owner。确认主机指纹前复核提示所属项目、主机端点和有效授权。
+- exec 的 stdout 与 stderr 共用 `max_bytes`。工具用文本报告退出码、终止信号或连接中断；只有明确的退出码 0 算成功。
+
+### 修复
+
+- 终端输入保留空格与回车；跨数据块的 UTF-8 字符按流解码，大块输出可按游标连续分页。
+- SFTP 文本读取按字节保留前缀。文件传输取消时等待本次传输清理；下载成功并通过授权复核后才替换目标，失败时保留已有文件。
+- 打包检查依据 npm 的实际成员清单核对导出、资源和 `files` 声明；CI 同时检查缺件反例。
+
+### 移除
+
+- 退役自维护安装器、同步脚本及 profile 修复脚本。安装由 DSH 的插件管理入口负责。
+
+### Changed
+
+- Sidebar management requires the host’s browser owner on 0.2.2-rc.5 and an owner peer supplied by the WebServer on 0.2.3-alpha.2. Host key confirmation checks the prompt’s project, host endpoint and current grant.
+- Stdout and stderr share one `max_bytes` budget for exec. The tool reports the exit code, terminating signal or connection loss as text; only a known zero exit code counts as success.
+
+### Fixed
+
+- Terminal input preserves whitespace and carriage returns. UTF-8 characters split across chunks are decoded as a stream, and large output can be read across successive cursor pages.
+- SFTP text reads retain a byte prefix. Cancellation waits for transfer cleanup; a download replaces its destination only after success and a final grant check, preserving an existing file on failure.
+- Package checks validate exports, assets and `files` entries against npm’s member list. CI also checks deliberately incomplete manifests and member lists.
+
+### Removed
+
+- Removed the standalone installers, sync script and profile repair scripts. Installation uses DSH’s plugin manager.
+
 ## [1.2.5] - 2026-11-24
 
 ### 修复

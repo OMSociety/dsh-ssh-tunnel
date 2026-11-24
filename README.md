@@ -42,18 +42,18 @@
 
 ## 安装方式
 
-**从 npm 安装**
+用 DSH 自带的插件安装命令，指定目标 profile：
 
 ```powershell
 # 先停掉正在运行的 DSH（运行中的服务会锁住依赖，装完再起）
-dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.2.5"
+dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.3.0"
 ```
 
 > **提示**：装好后**刷新一下浏览器页面**，「SSH 隧道」入口才会出现在右侧栏——只重启宿主不够，客户端产物是页面加载时取的。
 
-**装完怎么用**
+**首次使用（owner 浏览器会话）**
 
-1. 打开右侧栏「SSH 隧道」→ **主机库** 添加一台主机（密码或私钥）
+1. 在右侧栏「+」中打开「SSH 隧道」，到 **主机库** 添加一台主机（密码或私钥）
 2. 切到 **项目授权**，给当前项目勾上这台主机并保存（**不授权连不上**，这是有意为之）
 3. 回 **隧道会话** 点 Connect；首次连接会提示确认主机密钥指纹
 4. 点 **终端** 得到一个交互式 shell，或点 **SFTP** 打开双栏面板
@@ -75,7 +75,7 @@ dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.2.5"
 
 | 动作 | 作用 |
 |---|---|
-| `list_hosts` / `list_sessions` | 列出主机库、列出当前会话 |
+| `list_hosts` / `list_sessions` | 列出当前项目已授权的主机与会话 |
 | `create_session` / `close_session` | 建立或关闭会话（配合 `session_strategy`） |
 | `exec` | 远端执行命令（`command`、`cwd`、`timeout_ms`） |
 | `sftp_list` / `sftp_stat` / `sftp_read_text` / `sftp_write_text` | 远端目录、元数据与文本读写 |
@@ -85,19 +85,21 @@ dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.2.5"
 
 - 会话策略：`reuse_or_create`（默认，会复活同主机已断开的会话）、`new`、`require_existing`，或显式传 `session_id`
 - 超时：默认 exec 30s、SFTP 元数据 30s、SFTP 传输 120s、shell 类操作（`read_session` / `send_input` / `resize_session`）10s；`timeout_ms` 可覆盖，取值钳制在 1000–300000，整次调用另有 300s 上限
-- `max_bytes`：exec 与 `sftp_read_text` 的单次输出上限，按字节钳制在 1024–1048576（默认 exec 262144 即 256 KiB、`sftp_read_text` 524288 即 512 KiB）；达到上限时结果带 `truncated: true` 且只含前 `max_bytes` 字节
-- exec 结算：结果带 `exitKnown` / `code` / `signal` / `connectionDropped`——正常退出 `exitKnown: true` 且 `code` 为退出码；按信号终止时返回 `signal`；连接被切断时 `code` 为 `null` 且 `connectionDropped: true`
-- 交互式输出的读取走 seq 游标协议（侧栏轮询的 `shellRead`）：客户端携带上次读到的 `since`，响应返回 `chunk` / `since` / `seq` / `baseSeq` / `dropped` / `chunkTruncated`；环形缓冲（512 KiB）淘汰后 `baseSeq` 前移且 `dropped: true`，客户端据此全量重取；单次响应的 `chunk` 上限 256 KiB
+- `max_bytes` 按原始字节计，范围为 1024–1048576。exec 默认 256 KiB，stdout 和 stderr 按收到数据的顺序共用这份预算；`sftp_read_text` 默认 512 KiB，保留文件开头的字节。超过预算时，工具文本中有 `truncated: true`。
+- exec 返回 `text` 和 `isError`。文本包含 stdout、stderr 和退出状态，如 `exit: 0` 或 `exit: killed by signal TERM (no exit-status)`；连接中断且没有退出状态时显示 `exit: unknown` 并提示输出可能不完整。只有明确的退出码 0 才算成功。
+- `send_input` 原样发送回车、空格和多行文本。侧栏用 `shellRead` 分页读取终端输出：最多保留 512 KiB，每页最多 256 KiB。传回上页的 `since` 读下一页；`dropped: true` 表示所需记录已被淘汰，应从 `baseSeq - 1` 重读。
 - 认证方式只有**密码**或**私钥**；键盘交互式认证（含堡垒机网页 MFA）不支持
 
 ## 安全
 
-**信任边界（客观陈述）**：插件的 API 与 vendor 路由都挂在 DSH 宿主的 web 服务上，并将宿主 `connection` 服务声明为硬依赖。每个请求首先过宿主准入：宿主提供 `connection.requestRejection(req)` 时由它执行 Host/Origin 围栏与浏览器会话认证，401 / 403 按原状态码立即结束，只有 `undefined` 才放行；宿主不提供该函数时（DSH 0.2.3-alpha.1 起）要求 WebServer 传入的 Peer 为 owner，否则回 403。放行后才进入插件的 URL / 正文解析、文件读取与业务分派。会话 API 必须带 `projectPathKey`，跨项目不可见。
+**谁可以管理**：在 DSH 0.2.3-alpha.2，侧栏 HTTP 路由要求宿主验证的 owner 身份。主机库与信任库由 owner 管理；侧栏操作按其请求指定的项目处理。模型工具则从宿主会话取得项目，不能通过工具参数切换授权范围。
+
+**DSH 0.2.2-rc.5 专属适配**：健康检查与静态终端资源使用宿主请求准入。侧栏管理（包括确认主机指纹）另要求宿主识别出本机浏览器的 owner 身份；仅通过会话认证或持有 API 凭据不足以管理。两个版本上的 `SSHManager` 均使用当前项目授权。清单用 `engines.dsh: "*"` 允许安装。离线准入测试覆盖上述两个宿主版本；其他版本未验证。
 
 授权与路径守卫动作清单：
 
 - **连接必须先授权**：未在「项目授权」里勾选的主机无法建立连接，Connect 不会自动写入授权
-- **授权撤销即时生效**：写类操作在发起前与结果回报前各复检一次授权；撤销后输出被丢弃并以 `not authorized` 失败，下载中的本地文件被删除，受影响的存活会话被关闭，重连拒绝复活已撤销主机
+- **撤权与取消**：交付前复核授权；下载先写入同目录临时文件，成功并通过复核后才替换目标。下载失败、取消或复核未通过时保留原文件。取消上传不能撤回远端已经写入的字节；重试前请检查远端文件。
 - **本地路径守卫 fail-closed**：上传 / 下载 / 列举 / 建目录 / 删除 / 重命名的本机路径限制在**项目工作区根**内，词法 **与** realpath 双重校验，越界路径与指向工作区外的符号链接一律拒绝；工作区根取不到时直接拒绝操作（可用环境变量 `DSH_SSH_TUNNEL_WORKSPACE_ROOT` 显式指定）
 - 工具结果与列表 API 不返回 password / PEM / 口令
 - 主机密钥以 **SHA256 hex** 存入 `known_hosts.json`；首次连接或指纹变更时在侧栏确认（展示指纹）
@@ -120,11 +122,13 @@ dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.2.5"
 ```sh
 npm test                            # 自检脚本全量回归（实际执行 node scripts/smoke-test.mjs）
 npm run check                       # 语法检查 + 自检
-node scripts/smoke-test.mjs         # 直接运行自检（离线设计，不起 SSH、不起 DSH 进程）
-bash scripts/sync-to-dsh.sh --dry-run                    # 预览 link: 接入命令；去掉 --dry-run 才会改写 profile
+node scripts/smoke-test.mjs --no-listen  # 跳过需要回环监听的用例
+npm run test:pack                   # 核对 npm 实际打包成员，并验证故意缺件会失败
 npm run build:preview               # 重出 docs/ 下的预览图（需本机 Chrome，CHROME_PATH 可指定）
 node scripts/portal-probe.mjs       # 客户端 Tab 渲染探针（能解析到 react 时生效，否则明确跳过）
 ```
+
+完整自检使用临时数据目录和监听 `127.0.0.1` 的 ssh2 测试服务，不依赖公网、远程主机或运行中的 DSH。CI 执行语法检查、完整自检和打包核查。
 
 项目目录：
 
@@ -135,8 +139,7 @@ lib/session.js          会话生命周期：连接、keepalive、掉线墓碑�
 lib/shared/             宿主与客户端共用纯函数：path / args / host-key / host-summary / http-trust / persist /
                         session-auth / session-policy / shell-buffer / vendor
 docs/preview/           预览输入：fixture.json 为虚构数据，panel.html 与 docs/panel-*.png 由 build:preview 生成
-scripts/                install.sh · install.ps1 · sync-to-dsh.sh · smoke-test.mjs · portal-probe.mjs
-scripts/lib/            安装链共享逻辑（.cjs，install.sh 与 install.ps1 共用）
+scripts/                smoke-test.mjs · check-pack.mjs · portal-probe.mjs · build-preview.mjs
 cordis.patch.yml        包内 bundle patch，CLI 据此写入 dsh.profile.bundles
 ```
 

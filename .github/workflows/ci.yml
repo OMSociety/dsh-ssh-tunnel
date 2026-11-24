@@ -24,7 +24,7 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: 冒烟测试
-        run: npm test
+        run: npm run check
 
       - name: 发布物清单
-        run: npm run check:pack
+        run: npm run test:pack

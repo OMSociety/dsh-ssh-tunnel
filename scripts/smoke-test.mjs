@@ -4,10 +4,11 @@
  * cases dial an in-process ssh2.Server on 127.0.0.1 with a throwaway key.
  * Run: node scripts/smoke-test.mjs
  */
+import { Readable, Writable, PassThrough } from 'node:stream'
 import assert from 'node:assert/strict'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import { generateKeyPairSync } from 'node:crypto'
 import { normalizeProjectKey, isPathInsideRoots, constrainToWorkspace, workspaceRoot, workspaceRoots } from '../lib/shared/path.js'
 import { requireString, stringOrDefault } from '../lib/shared/args.js'
@@ -52,7 +53,6 @@ import {
 } from '../lib/shared/persist.js'
 import {
   assertSessionStillAuthorized,
-  discardRevokedLocalFile,
 } from '../lib/shared/session-auth.js'
 import {
   VENDOR_ASSETS,
@@ -75,7 +75,7 @@ function makeTempDir(prefix) {
 const WS_ROOT = makeTempDir('dsh-ssh-ws')
 process.env.DSH_SSH_TUNNEL_WORKSPACE_ROOT = WS_ROOT
 process.env.DSH_HOME = makeTempDir('dsh-ssh-home')
-const { createApiHandler, createVendorHandler, inject } = await import('../lib/index.js')
+const { createApiHandler, createVendorHandler, inject, stagedDownload, sftpFastPut, transferStreams, assertPromptGrant, terminalInput, sftpReadFile } = await import('../lib/index.js')
 const wsPath = (...segs) => normalizeProjectKey(join(WS_ROOT, ...segs))
 const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -88,6 +88,7 @@ function skip(reason) {
   throw new Skip(reason)
 }
 function test(name, fn) {
+  if (process.argv.includes('--no-listen') && name.startsWith('exec:')) return
   const run = () => {
     try {
       const result = fn()
@@ -833,15 +834,16 @@ test('shell buffer: eviction advances baseSeq and flags dropped', async () => {
   const current = rec.chunkFrom(fresh.seq)
   assert.equal(current.dropped, false)
   // Per-response cap: 8 retained 64 KiB chunks come back in bounded slices.
-  assert.ok(Buffer.byteLength(fresh.chunk) <= 256 * 1024 + 64 * 1024)
+  assert.ok(Buffer.byteLength(fresh.chunk) <= 256 * 1024)
   assert.equal(fresh.chunkTruncated, true)
 })
 
-test('shell buffer: single over-cap chunk is delivered whole and flagged', async () => {
+test('shell buffer: single over-cap write is delivered across bounded pages', async () => {
   const { rec } = await makeBufferSession()
   rec.pushOutput('y'.repeat(300 * 1024))
   const r = rec.chunkFrom(0)
-  assert.equal(r.chunk.length, 300 * 1024)
+  assert.equal(r.chunk.length, 256 * 1024)
+  assert.equal(r.chunk + rec.chunkFrom(r.since).chunk, 'y'.repeat(300 * 1024))
   assert.equal(r.chunkTruncated, true)
   assert.equal(r.dropped, false)
 })
@@ -896,33 +898,155 @@ test('result gate: empty project binding is denied (fail-closed)', () => {
   )
 })
 
-test('download discard: revoked host removes the local file', () => {
-  const p = join(tmpdir(), `dsh-ssh-tunnel-revoke-${process.pid}.txt`)
-  writeFileSync(p, 'secret data', 'utf8')
-  const discarded = discardRevokedLocalFile(
-    { projectPathKey: '/workspace/DSH-plugin', hostId: 'h-sg' },
-    p,
-    () => false,
-  )
-  assert.equal(discarded, true)
-  assert.equal(existsSync(p), false)
+test('download: failed delivery preserves the previous file', async () => {
+  const dir = makeTempDir('ssh-pull-fail')
+  const path = join(dir, 'result')
+  writeFileSync(path, 'original')
+  await assert.rejects(stagedDownload({ createReadStream: () => Readable.from(['replacement']) }, '/fixture', path, () => { throw new Error('fixture refusal') }), /fixture refusal/)
+  assert.equal(readFileSync(path, 'utf8'), 'original')
+  assert.deepEqual(readdirSync(dir), ['result'])
 })
 
-test('download discard: granted host keeps the local file', () => {
-  const p = join(tmpdir(), `dsh-ssh-tunnel-grant-${process.pid}.txt`)
-  writeFileSync(p, 'data', 'utf8')
-  try {
-    const discarded = discardRevokedLocalFile(
-      { projectPathKey: '/workspace/DSH-plugin', hostId: 'h-sg' },
-      p,
-      () => true,
-    )
-    assert.equal(discarded, false)
-    assert.equal(existsSync(p), true)
-  } finally {
-    try {
-      unlinkSync(p)
-    } catch {}
+test('download: partial failure, Stop and timeout discard only the stage', async () => {
+  for (const reason of ['error', 'abort', 'timeout']) {
+    const dir = makeTempDir('ssh-download-partial'), path = join(dir, 'result')
+    writeFileSync(path, 'original')
+    const controller = new AbortController(), stream = new PassThrough()
+    const work = stagedDownload({ createReadStream: () => stream }, '/fixture', path, () => assert.fail('unexpected commit'), { signal: controller.signal, timeoutMs: 1000 })
+    stream.write('partial')
+    const stage = readdirSync(dir).find(name => name.startsWith('.ssh-download-'))
+    const stageFile = join(dir, stage, 'content')
+    for (let i = 0; i < 50 && (!existsSync(stageFile) || !readFileSync(stageFile).length); i++) await new Promise(resolve => setTimeout(resolve, 5))
+    assert.equal(readFileSync(stageFile, 'utf8'), 'partial')
+    if (reason === 'error') stream.destroy(new Error('fixture read failed'))
+    if (reason === 'abort') controller.abort()
+    await assert.rejects(work, reason === 'error' ? /fixture read failed/ : reason === 'abort' ? /abort/i : /timed out/)
+    assert.equal(stream.closed, true); assert.deepEqual(readdirSync(dir), ['result']); assert.equal(readFileSync(path, 'utf8'), 'original')
+  }
+})
+
+test('download: complete delivery replaces the previous file', async () => {
+  const path = join(makeTempDir('ssh-pull-ok'), 'result')
+  writeFileSync(path, 'original')
+  await stagedDownload({ createReadStream: () => Readable.from(['replacement']) }, '/fixture', path, () => {})
+  assert.equal(readFileSync(path, 'utf8'), 'replacement')
+})
+
+test('upload: invalid local source makes no remote calls', async () => {
+  const dir = makeTempDir('ssh-put-source')
+  let calls = 0
+  const sftp = { open() { calls++; throw new Error('unexpected open') } }
+  for (const source of [join(dir, 'missing'), dir]) await assert.rejects(sftpFastPut(sftp, source, '/fixture'))
+  assert.equal(calls, 0)
+})
+
+test('upload: OPEN creation mode, sequential writes and acknowledged close', async () => {
+  const source = join(makeTempDir('ssh-put-ok'), 'content')
+  const data = Buffer.alloc(150000, 120)
+  writeFileSync(source, data)
+  for (const existingMode of [null, 0o640]) {
+    let mode = existingMode, closed = false, bytes = 0
+    const chunks = [], handle = Buffer.from('file')
+    const sftp = {
+      open(path, flags, attrs, cb) { assert.equal(path, '/fixture'); assert.equal(flags, 'w'); assert.equal(attrs.mode, 0o600); mode ??= attrs.mode; cb(null, handle) },
+      write(h, chunk, start, len, pos, cb) { assert.equal(h, handle); assert.equal(pos, bytes); chunks.push(chunk.subarray(start, start + len)); bytes += len; cb() },
+      close(h, cb) { assert.equal(h, handle); setTimeout(() => { closed = true; cb() }, 10) },
+    }
+    await sftpFastPut(sftp, source, '/fixture')
+    assert.deepEqual(Buffer.concat(chunks), data)
+    assert.equal(mode, existingMode ?? 0o600)
+    assert.equal(closed, true)
+  }
+})
+
+test('upload: late OPEN is closed before Stop or timeout settles', async () => {
+  const source = join(makeTempDir('ssh-put-stop'), 'content')
+  writeFileSync(source, 'fixture')
+  for (const stop of [true, false]) {
+    const controller = new AbortController(); let closed = false, writes = 0
+    const sftp = {
+      open(_p, _f, _a, cb) { if (stop) controller.abort(); setTimeout(() => cb(null, Buffer.from('h')), stop ? 30 : 1100) },
+      write(_h, _b, _s, _l, _o, cb) { writes++; cb() },
+      close(_h, cb) { setTimeout(() => { closed = true; cb() }, 10) },
+    }
+    await assert.rejects(sftpFastPut(sftp, source, '/fixture', { signal: controller.signal, timeoutMs: 1000 }), stop ? /abort/i : /timed out/)
+    assert.equal(closed, true); assert.equal(writes, 0)
+  }
+})
+
+test('transfer: Stop settles after source and destination close', async () => {
+  const controller = new AbortController()
+  const input = new PassThrough()
+  const output = new Writable({ write(_data, _enc, cb) { cb() }, destroy(error, cb) { setTimeout(() => cb(error), 20) } })
+  const work = transferStreams('sftp_upload', () => input, () => output, { signal: controller.signal })
+  input.write('fixture')
+  controller.abort()
+  await assert.rejects(work, /abort/i)
+  assert.equal(input.closed, true)
+  assert.equal(output.closed, true)
+})
+
+test('sftp text: retained prefix is independent of chunk boundaries', async () => {
+  for (const parts of [['abcdef'], ['ab', 'cdef'], ['abc', 'def']]) {
+    const result = await sftpReadFile({ createReadStream: () => Readable.from(parts.map(p => Buffer.from(p))) }, '/fixture', 3)
+    assert.deepEqual(result, { content: 'abc', truncated: true, size: 6 })
+  }
+})
+
+test('terminal input: whitespace and Enter are data', () => {
+  for (const input of [' ', '\r', '\n', '  echo hi\n']) assert.equal(terminalInput(input), input)
+  for (const input of [undefined, '']) assert.throws(() => terminalInput(input))
+})
+
+test('shell buffer: UTF-8 split across transport events stays intact', async () => {
+  const { rec, registry } = await makeBufferSession()
+  rec.client.shell = (_opts, cb) => cb(null, new PassThrough())
+  const stream = await registry.ensureShell(rec)
+  for (const byte of Buffer.from('中🙂')) stream.write(Buffer.from([byte]))
+  stream.write(Buffer.from([0xe4])); stream.emit('close')
+  const next = await registry.ensureShell(rec)
+  next.write(Buffer.from('中文')); next.emit('close')
+  assert.equal(rec.chunkFrom(0).chunk, '中🙂�中文')
+})
+
+test('shell buffer: Unicode pages respect bytes and advance cursors', async () => {
+  const { rec } = await makeBufferSession()
+  const text = '中🙂'.repeat(65000)
+  rec.pushOutput(text)
+  let since = 0, joined = '', count = 0
+  do {
+    const page = rec.chunkFrom(since)
+    assert.equal(page.length, Buffer.byteLength(page.chunk)); assert.ok(page.length <= 256 * 1024)
+    assert.ok(page.since > since); assert.equal(page.dropped, false)
+    joined += page.chunk; since = page.since; count++
+    if (!page.chunkTruncated) break
+  } while (true)
+  assert.ok(count > 1); assert.equal(joined, text); assert.equal(rec.chunkFrom(since).chunk, '')
+})
+
+test('summary projection: every restricted key is detected', () => {
+  for (const key of ['password', 'privateKeyPem', 'privateKey', 'passphrase', 'secret']) {
+    assert.throws(() => assertNoSecretFields([{ [key]: 'fixture' }]), /must not carry/)
+  }
+})
+
+test('host key approval requires the current project grant and endpoint', () => {
+  const prompt = { projectPathKey: 'project', hostId: 'fixture', host: 'example.invalid', port: 22 }
+  assert.doesNotThrow(() => assertPromptGrant(prompt, 'project', prompt, () => true))
+  for (const args of [['other', prompt, true], ['project', prompt, false], ['project', { ...prompt, port: 23 }, true]]) {
+    assert.throws(() => assertPromptGrant(prompt, args[0], args[1], () => args[2]))
+  }
+})
+
+test('DSH 0.2.2-rc.5 sensitive routes require the admitted browser owner', async () => {
+  const browserPeer = { principal: { kind: 'owner' } }
+  for (const [peer, status] of [[browserPeer, 200], [{ ...browserPeer }, 403], [undefined, 403]]) {
+    let reads = 0
+    const ctx = { connection: { requestRejection() {}, browserPeer, admit: () => ({ peer }) } }
+    const res = mockHttpResponse()
+    await createApiHandler(ctx, { readBody: () => { reads++; return {} }, dispatch: () => ({ ok: true }) })({ method: 'POST', url: '/dsh-ssh-tunnel/api/listHosts' }, res)
+    assert.equal(res.statusCode, status)
+    assert.equal(reads, status === 200 ? 1 : 0)
   }
 })
 
@@ -1123,17 +1247,18 @@ test('exec: max_bytes truncates by byte and flags truncated', async () => {
   await execFixture(
     (client, accept) => {
       const stream = accept()
-      stream.write('a'.repeat(5000))
+      stream.write('a'.repeat(700))
+      stream.stderr.write('b'.repeat(700))
       stream.exit(0)
       stream.end()
     },
     async (exec) => {
       const r = await exec('any', { maxBytes: 1024 })
       assert.equal(r.truncated, true)
-      assert.equal(Buffer.byteLength(r.stdout), 1024)
+      assert.equal(Buffer.byteLength(r.stdout + r.stderr), 1024)
       // Sub-floor values clamp to 1 KiB instead of trusting 10.
       const r2 = await exec('any', { maxBytes: 10 })
-      assert.equal(Buffer.byteLength(r2.stdout), 1024)
+      assert.equal(Buffer.byteLength(r2.stdout + r2.stderr), 1024)
     },
   )
 })

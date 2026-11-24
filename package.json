@@ -1,6 +1,6 @@
 {
   "name": "dsh-ssh-tunnel",
-  "version": "1.2.5",
+  "version": "1.3.0",
   "description": "Multi-host SSH tunnel and SSHManager tool for DeepSeek Harness (project-scoped grants)",
   "type": "module",
   "license": "MIT",
@@ -41,13 +41,15 @@
     "./locale/*.json": "./locale/*.json",
     "./client": "./lib/client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./icon": "./icon.svg"
   },
   "scripts": {
     "test": "node scripts/smoke-test.mjs",
-    "check": "node --check lib/index.js && node scripts/smoke-test.mjs",
+    "check": "node --check lib/index.js && node --check lib/client.js && node scripts/smoke-test.mjs",
     "check:pack": "node scripts/check-pack.mjs",
-    "build:preview": "node scripts/build-preview.mjs"
+    "build:preview": "node scripts/build-preview.mjs",
+    "test:pack": "node scripts/check-pack.mjs --self-test"
   },
   "dsh": {
     "manifestVersion": 1,
@@ -74,12 +76,8 @@
     "README_en.md",
     "cordis.patch.yml",
     "lib",
-    "scripts/install.sh",
-    "scripts/install.ps1",
-    "scripts/lib/*.cjs",
     "scripts/portal-probe.mjs",
     "scripts/smoke-test.mjs",
-    "scripts/sync-to-dsh.sh",
     "icon.svg",
     "locale/*.json"
   ],

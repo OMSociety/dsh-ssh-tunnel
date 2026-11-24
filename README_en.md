@@ -41,18 +41,18 @@ It does **not** replace the global `fs` / `subprocess` with a remote disk: remot
 
 ## Installation
 
-**Install from npm**
+Use the DSH plugin command and specify the target profile:
 
 ```powershell
 # stop the running DSH first (a live service holds the dependency lock; start it again afterwards)
-dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.2.5"
+dsh plugin --profile <profile> add "dsh-ssh-tunnel@1.3.0"
 ```
 
 > **Note**: After installing, **refresh the browser page** for the "SSH Tunnel" entry to appear in the sidebar — restarting the host alone is not enough, because the client artifact is fetched when the page loads.
 
-**First run**
+**First run (owner browser session)**
 
-1. Open the "SSH Tunnel" tab in the sidebar and add a host on the **Hosts** page (password or private key)
+1. Select **SSH Tunnel** from the sidebar **+** menu and add a host on the **Hosts** page (password or private key)
 2. Switch to **Project access** and grant that host to the current project, then save (without a grant you cannot connect — that is intentional)
 3. Back on **Sessions**, press Connect; the first connection asks you to confirm the host key fingerprint
 4. Click **Terminal** for an interactive shell, or **SFTP** for the dual-pane panel
@@ -74,7 +74,7 @@ One sidebar tab with three pages; the UI follows the DSH interface language betw
 
 | Action | Purpose |
 |---|---|
-| `list_hosts` / `list_sessions` | List the host inventory and the current sessions |
+| `list_hosts` / `list_sessions` | List the hosts granted to the project and its sessions |
 | `create_session` / `close_session` | Open or close a session (together with `session_strategy`) |
 | `exec` | Run a remote command (`command`, `cwd`, `timeout_ms`) |
 | `sftp_list` / `sftp_stat` / `sftp_read_text` / `sftp_write_text` | Remote listing, metadata and text I/O |
@@ -84,19 +84,21 @@ One sidebar tab with three pages; the UI follows the DSH interface language betw
 
 - Session strategies: `reuse_or_create` (default; revives a disconnected session for that host), `new`, `require_existing`, or an explicit `session_id`
 - Timeouts: exec 30s, SFTP metadata 30s, SFTP transfers 120s, shell operations (`read_session` / `send_input` / `resize_session`) 10s by default; `timeout_ms` overrides them, clamped to 1000–300000, with a 300s ceiling for the whole call
-- `max_bytes`: per-call output cap for exec and `sftp_read_text`, clamped to 1024–1048576 bytes (defaults: 262144 = 256 KiB for exec, 524288 = 512 KiB for `sftp_read_text`); when the cap is hit the result sets `truncated: true` and carries only the first `max_bytes` bytes
-- exec settlement: results carry `exitKnown` / `code` / `signal` / `connectionDropped` — a normal exit sets `exitKnown: true` with the exit code in `code`; a signal death returns `signal`; a cut connection returns `code: null` with `connectionDropped: true`
-- Interactive output is read through a seq cursor protocol (the sidebar polling API `shellRead`): the client sends the last `since` it has seen, and the response returns `chunk` / `since` / `seq` / `baseSeq` / `dropped` / `chunkTruncated`; ring-buffer eviction (512 KiB) moves `baseSeq` forward and sets `dropped: true`, telling the client to refetch in full; a single response caps `chunk` at 256 KiB
+- `max_bytes` counts raw bytes, from 1024 to 1048576. For exec, stdout and stderr share a single budget in arrival order (default 256 KiB). `sftp_read_text` retains the file prefix (default 512 KiB). When data exceeds the budget, the tool text includes `truncated: true`.
+- exec returns `text` and `isError`. The text includes stdout, stderr and an exit line such as `exit: 0` or `exit: killed by signal TERM (no exit-status)`. If the connection drops before an exit status arrives, it reports `exit: unknown` and warns that output may be partial. Only a known zero exit code counts as success.
+- `send_input` sends carriage returns, whitespace and multiline text verbatim. The sidebar pages through terminal output with `shellRead`: up to 512 KiB retained, at most 256 KiB per page. Pass the previous page’s `since` to continue; `dropped: true` means the requested records were evicted, so resume from `baseSeq - 1`.
 - Authentication is **password** or **private key** only; keyboard-interactive (including bastion web MFA) is not supported
 
 ## Security
 
-**Trust boundary (stated as it is)**: the plugin's API and vendor routes are served by the DSH host's web server, and the host `connection` service is a required dependency. Every request first passes host admission: when the host provides `connection.requestRejection(req)`, it applies the host's Host/Origin fence and browser-session authentication, a 401 or 403 ends the response immediately with the same status, and only `undefined` proceeds; when the host does not provide it (DSH 0.2.3-alpha.1 and later), the Peer passed by the WebServer must be an owner, otherwise the response is 403. Admitted requests proceed to plugin URL/body parsing, file reads and business dispatch. Session APIs require `projectPathKey` and are invisible across projects.
+**Who can manage hosts**: on DSH 0.2.3-alpha.2, sidebar HTTP routes require a host-verified owner. The owner manages the host and trust stores; sidebar operations use the project specified in the request. The model tool gets its project from the host session; a tool argument cannot select a different grant scope.
+
+**DSH 0.2.2-rc.5 adapter**: the health check and static terminal assets use host request admission. Sidebar management, including host key confirmation, additionally requires the host to identify its own browser peer as the owner. Session authentication alone or an API credential is insufficient. On both versions `SSHManager` uses the current project’s grants. The manifest permits installation with `engines.dsh: "*"`. Offline admission tests cover these two host versions; other versions are unverified.
 
 Authorization and path-guard action list:
 
 - **Grant before connect**: a host that is not checked under Project access cannot be connected, and Connect never auto-writes grants
-- **Revocation takes effect immediately**: write operations re-check the grant once before being issued and once before the result is delivered; after a revocation the output is discarded and the call fails with `not authorized`, a local file mid-download is deleted, affected live sessions are closed, and reconnect refuses to resurrect the revoked host
+- **Revocation and cancellation**: the grant is checked again before delivery. Downloads go to a temporary file in the destination directory; only a successful, authorized download replaces the destination. Failure, cancellation or a failed grant check leaves the existing file intact. Cancelling an upload cannot undo bytes already written remotely; inspect the remote file before retrying.
 - **Local path guard fails closed**: local upload / download / list / mkdir / delete / rename paths are constrained to the **project workspace root**, with both lexical and realpath checks, and out-of-bounds paths or symlinks pointing outside the workspace are rejected; when no workspace root can be resolved the operation is refused (the environment variable `DSH_SSH_TUNNEL_WORKSPACE_ROOT` can set one explicitly)
 - Tool results and list APIs never return password / PEM / passphrase
 - Host keys are stored as **SHA256 hex** in `known_hosts.json`; the first connect or a fingerprint change is confirmed in the sidebar with the fingerprint shown
@@ -119,13 +121,15 @@ Under `$DSH_HOME/ssh-tunnel/` (directory mode `0700`; this is POSIX behavior —
 ```sh
 npm test                            # full regression of the smoke scripts (runs node scripts/smoke-test.mjs)
 npm run check                       # syntax check + smoke tests
-node scripts/smoke-test.mjs         # run the smoke scripts directly (offline by design: no SSH, no DSH process)
-bash scripts/sync-to-dsh.sh --dry-run                    # preview the link: registration; drop --dry-run to actually rewrite the profile
+node scripts/smoke-test.mjs --no-listen  # skip cases that require a loopback listener
+npm run test:pack                   # verify npm pack members and missing-member regressions
 npm run build:preview               # regenerate the preview images under docs/ (needs local Chrome; CHROME_PATH overrides)
 node scripts/portal-probe.mjs       # client tab render probe (runs when react resolves, otherwise skips)
 ```
 
-Layout and where to change what:
+The full suite uses a temporary data directory and an ssh2 test server listening on `127.0.0.1`. It needs no public network, remote host or running DSH. CI runs syntax checks, the full suite and package verification.
+
+Layout:
 
 ```text
 lib/index.js            Host entry: tool registration, /dsh-ssh-tunnel/api routes, grants and path guard, xterm asset serving
@@ -134,8 +138,7 @@ lib/session.js          Session lifecycle: connect, keepalive, drop tombstones a
 lib/shared/             Pure functions shared by host and client: path / args / host-key / host-summary / http-trust / persist /
                         session-auth / session-policy / shell-buffer / vendor
 docs/preview/           Preview input: fixture.json is fictional data; panel.html and docs/panel-*.png are generated by build:preview
-scripts/                install.sh · install.ps1 · sync-to-dsh.sh · smoke-test.mjs · portal-probe.mjs
-scripts/lib/            Installer shared logic (.cjs, used by both install.sh and install.ps1)
+scripts/                smoke-test.mjs · check-pack.mjs · portal-probe.mjs · build-preview.mjs
 cordis.patch.yml        In-package bundle patch the CLI turns into dsh.profile.bundles
 ```
 
